@@ -1,0 +1,130 @@
+name: Update from lawallet-nwc
+
+on:
+  repository_dispatch:
+    types: [lawallet-nwc-release]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'LaWallet NWC version to package (with or without a leading v)'
+        required: true
+        type: string
+      image:
+        description: 'Full Docker image tag. Defaults to masize/lawallet-nwc:<version>.'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-from-upstream-${{ github.event.client_payload.version || inputs.version || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Bump package to upstream release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          persist-credentials: false
+
+      - name: Resolve inputs
+        id: pkg
+        env:
+          DISPATCH_VERSION: ${{ github.event.client_payload.version }}
+          DISPATCH_IMAGE: ${{ github.event.client_payload.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_IMAGE: ${{ inputs.image }}
+        run: |
+          set -euo pipefail
+
+          VERSION="${DISPATCH_VERSION:-${INPUT_VERSION:-}}"
+          VERSION="${VERSION#v}"
+          if [ -z "${VERSION}" ]; then
+            echo "::error::Missing LaWallet NWC version."
+            exit 1
+          fi
+
+          IMAGE="${DISPATCH_IMAGE:-${INPUT_IMAGE:-}}"
+          if [ -z "${IMAGE}" ]; then
+            IMAGE="masize/lawallet-nwc:${VERSION}"
+          fi
+
+          {
+            echo "version=${VERSION}"
+            echo "image=${IMAGE}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Patch package files
+        env:
+          VERSION: ${{ steps.pkg.outputs.version }}
+          IMAGE: ${{ steps.pkg.outputs.image }}
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+          image = os.environ["IMAGE"]
+          # The image tag drives the StartOS package's image reference. The
+          # exver version resets its packaging revision to 0 on an upstream bump.
+          tag = image.rsplit(":", 1)[-1] if ":" in image else version
+
+          def replace_once(path, pattern, replacement):
+              p = Path(path)
+              s = p.read_text()
+              new, n = re.subn(pattern, replacement, s, count=1, flags=re.MULTILINE)
+              if n != 1:
+                  raise SystemExit(f"Expected exactly one match in {path}, found {n}")
+              p.write_text(new)
+
+          replace_once(
+              "startos/versions/current.ts",
+              r"version:\s*'[^']*'",
+              f"version: '{version}:0'",
+          )
+          replace_once(
+              "startos/versions/current.ts",
+              r"releaseNotes:\s*'[^']*'",
+              f"releaseNotes: 'LaWallet NWC {version}.'",
+          )
+          replace_once(
+              "startos/manifest/index.ts",
+              r"dockerTag:\s*'masize/lawallet-nwc:[^']*'",
+              f"dockerTag: 'masize/lawallet-nwc:{tag}'",
+          )
+          PY
+
+          grep -n "version:" startos/versions/current.ts
+          grep -n "dockerTag:" startos/manifest/index.ts
+
+      - name: Commit and push
+        env:
+          TOKEN: ${{ secrets.RELEASE_PAT || github.token }}
+          VERSION: ${{ steps.pkg.outputs.version }}
+          IMAGE: ${{ steps.pkg.outputs.image }}
+          SOURCE_RUN_URL: ${{ github.event.client_payload.source_run_url }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet; then
+            echo "Package already at ${VERSION}."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          BODY="Image: ${IMAGE}"
+          if [ -n "${SOURCE_RUN_URL}" ]; then
+            BODY="${BODY}"$'\n'"Source run: ${SOURCE_RUN_URL}"
+          fi
+          git commit -am "Update LaWallet NWC to ${VERSION}" -m "${BODY}"
+          git push origin HEAD:master
