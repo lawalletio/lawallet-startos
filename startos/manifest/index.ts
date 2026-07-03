@@ -7,8 +7,11 @@ export const manifest = setupManifest({
   license: 'MIT',
   packageRepo: 'https://github.com/lawalletio/lawallet-startos',
   upstreamRepo: 'https://github.com/lawalletio/lawallet-nwc',
-  marketingUrl: 'https://lawallet.io/',
-  donationUrl: null,
+  // StartOS exposes two external-link slots on the marketplace listing:
+  // marketingUrl ("Marketing") and donationUrl ("Donate"). We point them at
+  // the official site and the docs — the labels themselves are fixed by StartOS.
+  marketingUrl: 'https://lawallet.io',
+  donationUrl: 'https://docs.lawallet.io',
   description: { short, long },
   volumes: ['main'],
   images: {
