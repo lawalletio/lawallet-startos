@@ -1,20 +1,138 @@
 name: Release
 
+# Self-contained release: builds the universal .s9pk and publishes it as a
+# GitHub Release asset. No external registry or S3 required (the package is
+# well under GitHub's 2 GiB asset limit). Only needs the DEV_KEY secret.
+#
+# Fires automatically when lawallet-nwc publishes a new image (repository_dispatch),
+# and can be run manually (workflow_dispatch) or by pushing a v* tag.
+
 on:
+  repository_dispatch:
+    types: [lawallet-nwc-release]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Upstream version to package (with or without a leading v)'
+        required: false
+        type: string
+      image:
+        description: 'Full Docker image tag. Defaults to masize/lawallet-nwc:<version>.'
+        required: false
+        type: string
   push:
     tags:
-      - 'v*.*'
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.client_payload.version || inputs.version || github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
-    uses: start9labs/shared-workflows/.github/workflows/release.yml@master
-    with:
-      # FREE_DISK_SPACE: true
-      RELEASE_REGISTRY: ${{ vars.RELEASE_REGISTRY }}
-      S3_S9PKS_BASE_URL: ${{ vars.S3_S9PKS_BASE_URL }}
-    secrets:
-      DEV_KEY: ${{ secrets.DEV_KEY }}
-      S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
-      S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
-    permissions:
-      contents: write
+    name: Build + publish .s9pk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Resolve version + image
+        id: v
+        env:
+          EVENT: ${{ github.event_name }}
+          DISPATCH_VERSION: ${{ github.event.client_payload.version }}
+          DISPATCH_IMAGE: ${{ github.event.client_payload.image }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_IMAGE: ${{ inputs.image }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ "${EVENT}" = "push" ]; then
+            VERSION="${REF_NAME#v}"
+            BUMP=false
+          else
+            VERSION="${DISPATCH_VERSION:-${INPUT_VERSION:-}}"
+            VERSION="${VERSION#v}"
+            BUMP=true
+          fi
+          if [ -z "${VERSION}" ]; then
+            echo "::error::No version provided."
+            exit 1
+          fi
+          IMAGE="${DISPATCH_IMAGE:-${INPUT_IMAGE:-}}"
+          [ -z "${IMAGE}" ] && IMAGE="masize/lawallet-nwc:${VERSION}"
+          {
+            echo "version=${VERSION}"
+            echo "tag=v${VERSION%%:*}"
+            echo "image=${IMAGE}"
+            echo "bump=${BUMP}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Bump manifest + version (dispatch / manual only)
+        if: steps.v.outputs.bump == 'true'
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          IMAGE: ${{ steps.v.outputs.image }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          version = os.environ["VERSION"]
+          image = os.environ["IMAGE"]
+          tag = image.rsplit(":", 1)[-1] if ":" in image else version
+          def once(path, pat, rep):
+              s = Path(path).read_text()
+              new, n = re.subn(pat, rep, s, count=1, flags=re.M)
+              if n != 1:
+                  raise SystemExit(f"{path}: expected 1 match, got {n}")
+              Path(path).write_text(new)
+          once("startos/versions/current.ts", r"version:\s*'[^']*'", f"version: '{version}:0'")
+          once("startos/versions/current.ts", r"releaseNotes:\s*'[^']*'", f"releaseNotes: 'LaWallet NWC {version}.'")
+          once("startos/manifest/index.ts", r"dockerTag:\s*'masize/lawallet-nwc:[^']*'", f"dockerTag: 'masize/lawallet-nwc:{tag}'")
+          PY
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "Update LaWallet NWC to ${VERSION}"
+            git push origin HEAD:master
+          fi
+
+      - name: Free disk space
+        uses: start9labs/shared-workflows/.github/actions/free-disk-space@master
+
+      - name: Setup build environment
+        uses: start9labs/shared-workflows/.github/actions/setup-build-env@master
+
+      - name: Set up developer signing key
+        run: |
+          mkdir -p ~/.startos
+          printf '%s' "${{ secrets.DEV_KEY }}" > ~/.startos/developer.key.pem
+
+      - name: Build universal .s9pk
+        run: |
+          npm ci
+          make universal
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.v.outputs.tag }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          set -euo pipefail
+          S9PK="$(ls -1 *.s9pk | head -1)"
+          echo "Releasing ${S9PK} as ${TAG}"
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release upload "${TAG}" "${S9PK}" --clobber
+          else
+            gh release create "${TAG}" "${S9PK}" \
+              --title "LaWallet NWC ${VERSION}" \
+              --notes "StartOS service package for LaWallet NWC ${VERSION}.
+
+          Install: download the \`.s9pk\` and sideload it via **StartOS → System → Sideload a Service**."
+          fi
