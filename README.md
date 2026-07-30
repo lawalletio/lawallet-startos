@@ -5,8 +5,8 @@
 # LaWallet NWC on StartOS
 
 > **Upstream repo:** <https://github.com/lawalletio/lawallet-nwc>
-> **Published images:** `masize/lawallet-nwc:2.0.0`,
-> `masize/lawallet-nwc-listener:2.0.0`
+> **Published images:** `masize/lawallet-nwc:2.1.0`,
+> `masize/lawallet-nwc-listener:2.1.0`
 
 StartOS service package for [LaWallet NWC](https://github.com/lawalletio/lawallet-nwc)
 — an open-source Lightning Address platform with Nostr Wallet Connect (NIP-47).
@@ -156,8 +156,8 @@ when lawallet-nwc publishes a new release. See [UPDATING.md](UPDATING.md) and
 ```yaml
 package_id: lawallet-nwc
 images:
-  web: masize/lawallet-nwc:2.0.0
-  listener: masize/lawallet-nwc-listener:2.0.0
+  web: masize/lawallet-nwc:2.1.0
+  listener: masize/lawallet-nwc-listener:2.1.0
   postgres: postgres:15-alpine
 architectures: [x86_64, aarch64]
 volumes:
