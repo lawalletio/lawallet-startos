@@ -2,8 +2,8 @@
 
 LaWallet NWC gives your community lightning addresses, integrated wallets, and a
 Nostr identity on your own domain — running entirely on your server. This package
-bundles the web app and its PostgreSQL database together, so there is nothing
-external to configure.
+bundles the web app, NWC listener, and PostgreSQL database together, so there
+is nothing external to configure.
 
 ## First run
 
@@ -39,7 +39,12 @@ brings the instance back exactly as it was.
 
 ## Notes
 
-- The generated `JWT_SECRET` and database password are created automatically on
-  first install and stored on the `main` volume. You never need to set them.
+- The database, JWT, user-key vault, listener authentication, and NWC-vault
+  secrets are generated independently on first install and stored on the
+  backed-up `main` volume. You never need to set them.
+- When using a LaWallet release with the deferred proxy, configure its NWC
+  account, fee, and NIP-57 receipt signer `nsec` in **Admin → Settings → NWC
+  Services**. The `nsec` is a write-only setting encrypted by the
+  package-managed NWC vault key.
 - The bundled landing screen links to `https://lawallet.io` (baked into the
   published image). Your admin dashboard and wallet work regardless.

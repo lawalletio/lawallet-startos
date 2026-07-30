@@ -22,6 +22,10 @@ export const manifest = setupManifest({
       source: { dockerTag: 'masize/lawallet-nwc:2.1.0' },
       arch: ['x86_64', 'aarch64'],
     },
+    listener: {
+      source: { dockerTag: 'masize/lawallet-nwc-listener:2.1.0' },
+      arch: ['x86_64', 'aarch64'],
+    },
     postgres: {
       source: { dockerTag: 'postgres:15-alpine' },
       arch: ['x86_64', 'aarch64'],

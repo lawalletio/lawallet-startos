@@ -1,5 +1,12 @@
 import { sdk } from './sdk'
-import { uiPort, pgUser, pgDatabase, pgPort, generateSecret } from './utils'
+import {
+  uiPort,
+  listenerPort,
+  pgUser,
+  pgDatabase,
+  pgPort,
+  generateSecret,
+} from './utils'
 import { storeJson } from './fileModels/store.json'
 
 export const main = sdk.setupMain(async ({ effects }) => {
@@ -9,14 +16,42 @@ export const main = sdk.setupMain(async ({ effects }) => {
    * Ensure the persistent secrets exist. Normally written on install
    * (init/generateSecrets.ts); this is a safety net for any other lifecycle.
    */
-  if (!(await storeJson.read().once())) {
+  const storedSecrets = await storeJson.read().once()
+  if (!storedSecrets) {
     await storeJson.write(effects, {
       jwtSecret: generateSecret(32),
       postgresPassword: generateSecret(24),
+      keyVaultSecret: generateSecret(32),
+      listenerAuthSecret: generateSecret(32),
+      listenerRequestAuthSecret: generateSecret(32),
+      nwcVaultSecret: generateSecret(32),
+    })
+  } else if (
+    !storedSecrets.keyVaultSecret ||
+    !storedSecrets.listenerAuthSecret ||
+    !storedSecrets.listenerRequestAuthSecret ||
+    !storedSecrets.nwcVaultSecret
+  ) {
+    // Upgrade path for backups/installations created before the listener and
+    // deferred proxy were bundled. Existing secrets remain unchanged.
+    await storeJson.write(effects, {
+      ...storedSecrets,
+      keyVaultSecret: storedSecrets.keyVaultSecret || generateSecret(32),
+      listenerAuthSecret:
+        storedSecrets.listenerAuthSecret || generateSecret(32),
+      listenerRequestAuthSecret:
+        storedSecrets.listenerRequestAuthSecret || generateSecret(32),
+      nwcVaultSecret: storedSecrets.nwcVaultSecret || generateSecret(32),
     })
   }
   const secrets = await storeJson.read().const(effects)
-  if (!secrets) {
+  if (
+    !secrets ||
+    !secrets.keyVaultSecret ||
+    !secrets.listenerAuthSecret ||
+    !secrets.listenerRequestAuthSecret ||
+    !secrets.nwcVaultSecret
+  ) {
     throw new Error('LaWallet NWC secrets are missing from store.json')
   }
 
@@ -47,6 +82,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
       readonly: false,
     }),
     'web',
+  )
+
+  const listener = await sdk.SubContainer.of(
+    effects,
+    { imageId: 'listener' },
+    sdk.Mounts.of(),
+    'listener',
   )
 
   /**
@@ -95,6 +137,11 @@ export const main = sdk.setupMain(async ({ effects }) => {
         env: {
           DATABASE_URL: databaseUrl,
           JWT_SECRET: secrets.jwtSecret,
+          KEY_VAULT_SECRET: secrets.keyVaultSecret,
+          NWC_VAULT_SECRET: secrets.nwcVaultSecret,
+          LISTENER_URL: `http://127.0.0.1:${listenerPort}`,
+          LISTENER_AUTH_SECRET: secrets.listenerAuthSecret,
+          LISTENER_REQUEST_AUTH_SECRET: secrets.listenerRequestAuthSecret,
           NODE_ENV: 'production',
           PORT: String(uiPort),
           HOSTNAME: '0.0.0.0',
@@ -113,5 +160,38 @@ export const main = sdk.setupMain(async ({ effects }) => {
           ),
       },
       requires: ['postgres'],
+    })
+    .addDaemon('listener', {
+      subcontainer: listener,
+      exec: {
+        // Mirrors the listener image CMD.
+        command: ['node', 'dist/index.js'],
+        env: {
+          DATABASE_URL: databaseUrl,
+          LISTENER_PORT: String(listenerPort),
+          LISTENER_AUTH_SECRET: secrets.listenerAuthSecret,
+          LISTENER_REQUEST_AUTH_SECRET: secrets.listenerRequestAuthSecret,
+          NWC_VAULT_SECRET: secrets.nwcVaultSecret,
+          WEB_ORIGIN: `http://127.0.0.1:${uiPort}`,
+          PROXY_RECONCILE_INTERVAL_MS: '600000',
+          NODE_ENV: 'production',
+        },
+      },
+      ready: {
+        // Internal sidecar — hidden from the StartOS UI.
+        display: null,
+        fn: () =>
+          sdk.healthCheck.checkWebUrl(
+            effects,
+            `http://127.0.0.1:${listenerPort}/health`,
+            {
+              successMessage: 'The NWC listener is ready',
+              errorMessage: 'The NWC listener is starting',
+            },
+          ),
+      },
+      // Waiting for web guarantees Prisma migrations complete before the
+      // listener reads the shared tables.
+      requires: ['postgres', 'web'],
     })
 })

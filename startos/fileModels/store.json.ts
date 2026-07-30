@@ -11,5 +11,11 @@ export const storeJson = FileHelper.json(
   z.object({
     jwtSecret: z.string(),
     postgresPassword: z.string(),
+    // Optional so backups created before the listener was bundled still load.
+    // main.ts generates and persists any missing value before starting daemons.
+    keyVaultSecret: z.string().optional(),
+    listenerAuthSecret: z.string().optional(),
+    listenerRequestAuthSecret: z.string().optional(),
+    nwcVaultSecret: z.string().optional(),
   }),
 )
