@@ -19,11 +19,11 @@ export const manifest = setupManifest({
     // The `dockerTag` below is bumped automatically on each release
     // (see .github/workflows/release.yml).
     web: {
-      source: { dockerTag: 'masize/lawallet-nwc:2.2.1' },
+      source: { dockerTag: 'masize/lawallet-nwc:2.2.2' },
       arch: ['x86_64', 'aarch64'],
     },
     listener: {
-      source: { dockerTag: 'masize/lawallet-nwc-listener:2.2.1' },
+      source: { dockerTag: 'masize/lawallet-nwc-listener:2.2.2' },
       arch: ['x86_64', 'aarch64'],
     },
     postgres: {
