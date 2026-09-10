@@ -122,15 +122,16 @@ jobs:
           fi
 
       - name: Free disk space
-        uses: start9labs/shared-workflows/.github/actions/free-disk-space@master
+        uses: Start9Labs/start-technologies/.github/actions/free-disk-space@master
 
       - name: Setup build environment
-        uses: start9labs/shared-workflows/.github/actions/setup-build-env@master
+        uses: Start9Labs/start-technologies/.github/actions/setup-build-env@master
 
       - name: Set up developer signing key
         run: |
-          mkdir -p ~/.startos
-          printf '%s' "${{ secrets.DEV_KEY }}" > ~/.startos/developer.key.pem
+          mkdir -p ~/.startos .startos
+          printf '%s' "${{ secrets.DEV_KEY }}" > ~/.startos/id.key.pem
+          cp ~/.startos/id.key.pem .startos/build.key.pem
 
       - name: Build universal .s9pk
         run: |

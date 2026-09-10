@@ -1,3 +1,4 @@
+import { i18n } from './i18n'
 import { sdk } from './sdk'
 import { uiPort } from './utils'
 
@@ -7,9 +8,9 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     protocol: 'http',
   })
   const ui = sdk.createInterface(effects, {
-    name: 'Web UI',
+    name: i18n('Web UI'),
     id: 'ui',
-    description: 'The LaWallet NWC admin dashboard and wallet',
+    description: i18n('The LaWallet NWC admin dashboard and wallet'),
     type: 'ui',
     masked: false,
     schemeOverride: null,

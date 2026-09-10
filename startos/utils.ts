@@ -14,6 +14,9 @@ export const pgUser = 'lawallet'
 export const pgDatabase = 'lawallet'
 export const pgPort = 5432
 
-/** Generate a random alphanumeric secret of the given length. */
+/**
+ * `charset` is a comma-separated list of ranges — `'a-zA-Z0-9'` is a parse
+ * error on start-sdk 2.0, not a three-range set.
+ */
 export const generateSecret = (len: number): string =>
-  utils.getDefaultString({ charset: 'a-zA-Z0-9', len })
+  utils.getDefaultString({ charset: 'a-z,A-Z,0-9', len })

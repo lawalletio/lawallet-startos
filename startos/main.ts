@@ -1,52 +1,21 @@
+import { i18n } from './i18n'
 import { sdk } from './sdk'
-import {
-  uiPort,
-  listenerPort,
-  pgUser,
-  pgDatabase,
-  pgPort,
-  generateSecret,
-} from './utils'
 import { storeJson } from './fileModels/store.json'
+import { listenerPort, pgDatabase, pgPort, pgUser, uiPort } from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
   /**
    * ======================== Setup ========================
    *
-   * Ensure the persistent secrets exist. Normally written on install
-   * (init/generateSecrets.ts); this is a safety net for any other lifecycle.
+   * Secrets are written on install (and missing NWC/listener keys on
+   * update) by init/generateSecrets.ts. A missing store.json or Postgres/JWT
+   * secret is a hard error — regenerating them would mint a new database
+   * password against an already-initialized cluster.
    */
-  const storedSecrets = await storeJson.read().once()
-  if (!storedSecrets) {
-    await storeJson.write(effects, {
-      jwtSecret: generateSecret(32),
-      postgresPassword: generateSecret(24),
-      keyVaultSecret: generateSecret(32),
-      listenerAuthSecret: generateSecret(32),
-      listenerRequestAuthSecret: generateSecret(32),
-      nwcVaultSecret: generateSecret(32),
-    })
-  } else if (
-    !storedSecrets.keyVaultSecret ||
-    !storedSecrets.listenerAuthSecret ||
-    !storedSecrets.listenerRequestAuthSecret ||
-    !storedSecrets.nwcVaultSecret
-  ) {
-    // Upgrade path for backups/installations created before the listener and
-    // deferred proxy were bundled. Existing secrets remain unchanged.
-    await storeJson.write(effects, {
-      ...storedSecrets,
-      keyVaultSecret: storedSecrets.keyVaultSecret || generateSecret(32),
-      listenerAuthSecret:
-        storedSecrets.listenerAuthSecret || generateSecret(32),
-      listenerRequestAuthSecret:
-        storedSecrets.listenerRequestAuthSecret || generateSecret(32),
-      nwcVaultSecret: storedSecrets.nwcVaultSecret || generateSecret(32),
-    })
-  }
   const secrets = await storeJson.read().const(effects)
   if (
-    !secrets ||
+    !secrets?.postgresPassword ||
+    !secrets.jwtSecret ||
     !secrets.keyVaultSecret ||
     !secrets.listenerAuthSecret ||
     !secrets.listenerRequestAuthSecret ||
@@ -59,8 +28,12 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   /**
    * ======================== Subcontainers ========================
+   *
+   * Postgres stays on `main` (subpath `postgresql`) so existing sideload
+   * installs keep their data. Do not split onto a `db` volume without a
+   * StartOS version migration.
    */
-  const postgres = await sdk.SubContainer.of(
+  const postgres = sdk.SubContainer.of(
     effects,
     { imageId: 'postgres' },
     sdk.Mounts.of().mountVolume({
@@ -69,10 +42,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
       mountpoint: '/var/lib/postgresql',
       readonly: false,
     }),
-    'postgres',
+    'postgres-sub',
   )
 
-  const web = await sdk.SubContainer.of(
+  const web = sdk.SubContainer.of(
     effects,
     { imageId: 'web' },
     sdk.Mounts.of().mountVolume({
@@ -81,33 +54,29 @@ export const main = sdk.setupMain(async ({ effects }) => {
       mountpoint: '/app/data',
       readonly: false,
     }),
-    'web',
+    'web-sub',
   )
 
-  const listener = await sdk.SubContainer.of(
+  const listener = sdk.SubContainer.of(
     effects,
     { imageId: 'listener' },
     sdk.Mounts.of(),
-    'listener',
+    'listener-sub',
   )
 
   /**
    * ======================== Daemons ========================
    *
-   * Postgres starts first (localhost only); the web app waits for it, then runs
-   * the image's own startup (`prisma migrate deploy && node server.js`).
+   * Postgres comes up first on loopback only. The web app then runs the
+   * image's `prisma migrate deploy && node server.js`, which owns the schema
+   * both it and the listener read. The listener waits for that migration to
+   * land before opening its relay connections.
    */
   return sdk.Daemons.of(effects)
     .addDaemon('postgres', {
       subcontainer: postgres,
       exec: {
-        // Mirrors the postgres image entrypoint, bound to localhost only.
-        command: [
-          'docker-entrypoint.sh',
-          'postgres',
-          '-c',
-          'listen_addresses=127.0.0.1',
-        ],
+        command: sdk.useEntrypoint(['-c', 'listen_addresses=127.0.0.1']),
         env: {
           POSTGRES_USER: pgUser,
           POSTGRES_DB: pgDatabase,
@@ -115,25 +84,39 @@ export const main = sdk.setupMain(async ({ effects }) => {
         },
       },
       ready: {
-        // Internal sidecar — hidden from the StartOS UI.
         display: null,
-        fn: () =>
-          sdk.healthCheck.runHealthScript(
-            ['pg_isready', '-h', '127.0.0.1', '-U', pgUser, '-d', pgDatabase],
-            postgres,
-            {
-              message: () => 'PostgreSQL is ready',
-              errorMessage: 'PostgreSQL is starting',
-            },
-          ),
+        fn: async () => {
+          const { exitCode } = await postgres.exec([
+            'pg_isready',
+            '-h',
+            '127.0.0.1',
+            '-U',
+            pgUser,
+            '-d',
+            pgDatabase,
+          ])
+          return exitCode === 0
+            ? { result: 'success', message: i18n('PostgreSQL is ready') }
+            : {
+                result: 'loading',
+                message: i18n('Waiting for PostgreSQL to be ready'),
+              }
+        },
+      },
+      requires: [],
+    })
+    .addOneshot('chown-data', {
+      subcontainer: web,
+      exec: {
+        command: ['chown', '-R', 'nextjs:nodejs', '/app/data'],
+        user: 'root',
       },
       requires: [],
     })
     .addDaemon('web', {
       subcontainer: web,
       exec: {
-        // Mirrors the lawallet-nwc image CMD.
-        command: ['sh', '-c', 'prisma migrate deploy && node server.js'],
+        command: sdk.useEntrypoint(),
         env: {
           DATABASE_URL: databaseUrl,
           JWT_SECRET: secrets.jwtSecret,
@@ -148,24 +131,24 @@ export const main = sdk.setupMain(async ({ effects }) => {
         },
       },
       ready: {
-        display: 'Web Interface',
+        display: i18n('Web Interface'),
+        gracePeriod: 60000,
         fn: () =>
           sdk.healthCheck.checkWebUrl(
             effects,
             `http://127.0.0.1:${uiPort}/api/health`,
             {
-              successMessage: 'The LaWallet NWC web interface is ready',
-              errorMessage: 'The web interface is not reachable',
+              successMessage: i18n('The web interface is ready'),
+              errorMessage: i18n('The web interface is not reachable'),
             },
           ),
       },
-      requires: ['postgres'],
+      requires: ['postgres', 'chown-data'],
     })
     .addDaemon('listener', {
       subcontainer: listener,
       exec: {
-        // Mirrors the listener image CMD.
-        command: ['node', 'dist/index.js'],
+        command: sdk.useEntrypoint(),
         env: {
           DATABASE_URL: databaseUrl,
           LISTENER_PORT: String(listenerPort),
@@ -178,20 +161,18 @@ export const main = sdk.setupMain(async ({ effects }) => {
         },
       },
       ready: {
-        // Internal sidecar — hidden from the StartOS UI.
-        display: null,
+        display: i18n('Payment Listener'),
+        gracePeriod: 30000,
         fn: () =>
           sdk.healthCheck.checkWebUrl(
             effects,
             `http://127.0.0.1:${listenerPort}/health`,
             {
-              successMessage: 'The NWC listener is ready',
-              errorMessage: 'The NWC listener is starting',
+              successMessage: i18n('The payment listener is connected'),
+              errorMessage: i18n('The payment listener is not reachable'),
             },
           ),
       },
-      // Waiting for web guarantees Prisma migrations complete before the
-      // listener reads the shared tables.
-      requires: ['postgres', 'web'],
+      requires: ['web'],
     })
 })

@@ -5,8 +5,8 @@
 # LaWallet NWC on StartOS
 
 > **Upstream repo:** <https://github.com/lawalletio/lawallet-nwc>
-> **Published images:** `masize/lawallet-nwc:2.1.0`,
-> `masize/lawallet-nwc-listener:2.1.0`
+> **Published images:** `masize/lawallet-nwc:2.6.0`,
+> `masize/lawallet-nwc-listener:2.6.0`
 
 StartOS service package for [LaWallet NWC](https://github.com/lawalletio/lawallet-nwc)
 — an open-source Lightning Address platform with Nostr Wallet Connect (NIP-47).
@@ -30,11 +30,11 @@ single service; no external services are required.
 
 ## Image and Container Runtime
 
-| Image ID   | Image                                   | Command                                                |
-| ---------- | --------------------------------------- | ------------------------------------------------------ |
-| `web`      | `masize/lawallet-nwc:<version>`         | `sh -c "prisma migrate deploy && node server.js"`      |
-| `listener` | `masize/lawallet-nwc-listener:<version>` | `node dist/index.js`                                   |
-| `postgres` | `postgres:15-alpine`                    | `docker-entrypoint.sh postgres -c listen_addresses=…` |
+| Image ID   | Image                                    | Command                                              |
+| ---------- | ---------------------------------------- | ---------------------------------------------------- |
+| `web`      | `masize/lawallet-nwc:<version>`           | image entrypoint via `sdk.useEntrypoint()`          |
+| `listener` | `masize/lawallet-nwc-listener:<version>` | image entrypoint via `sdk.useEntrypoint()`          |
+| `postgres` | `postgres:15-alpine`                     | image entrypoint plus `listen_addresses=127.0.0.1` |
 
 Architectures: `x86_64`, `aarch64`. The web and listener images are matching
 multi-arch images built by lawallet-nwc CI. Postgres and the listener are
@@ -73,7 +73,7 @@ Single `main` volume, sub-pathed per concern:
 No StartOS config form. All runtime environment is derived automatically:
 
 | Env var                       | Value / purpose                                                     |
-| ----------------------------- | ------------------------------------------------------------------- |
+| ----------------------------- | ----------------------------------------------------------------- |
 | `DATABASE_URL`                | Shared local PostgreSQL connection                                  |
 | `JWT_SECRET`                  | Generated browser/API session signing key                           |
 | `KEY_VAULT_SECRET`            | Independent generated user-key encryption key                       |
@@ -104,20 +104,18 @@ its health check becomes ready; the listener starts only after that check.
 
 Access via LAN IP, `<hostname>.local`, Tor `.onion`, or a custom domain. For
 lightning addresses / NIP-05 to resolve publicly, forward the three
-`.well-known` paths (`lnurlp`, `nostr.json`, `verify`) from your domain to this
+`.well-known` paths (`lnurlp`, `nostr.json`, `lawallet.json`) from your domain to this
 interface — see [instructions.md](instructions.md).
 
 ---
 
 ## Health Checks
 
-| Check         | Method                                      |
-| ------------- | ------------------------------------------- |
-| Web Interface | HTTP GET `http://127.0.0.1:2288/api/health` |
-| NWC listener  | HTTP GET `http://127.0.0.1:4100/health`     |
-| PostgreSQL    | `pg_isready`                                |
-
-The listener and PostgreSQL checks are internal and hidden from the StartOS UI.
+| Check           | Method                                      |
+| --------------- | ------------------------------------------- |
+| Web Interface   | HTTP GET `http://127.0.0.1:2288/api/health` |
+| Payment Listener | HTTP GET `http://127.0.0.1:4100/health`   |
+| PostgreSQL      | `pg_isready` (internal)                      |
 
 ---
 
@@ -156,8 +154,8 @@ when lawallet-nwc publishes a new release. See [UPDATING.md](UPDATING.md) and
 ```yaml
 package_id: lawallet-nwc
 images:
-  web: masize/lawallet-nwc:2.1.0
-  listener: masize/lawallet-nwc-listener:2.1.0
+  web: masize/lawallet-nwc:2.6.0
+  listener: masize/lawallet-nwc-listener:2.6.0
   postgres: postgres:15-alpine
 architectures: [x86_64, aarch64]
 volumes:
