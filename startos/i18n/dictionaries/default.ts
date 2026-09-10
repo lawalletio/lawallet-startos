@@ -1,20 +1,18 @@
 export const DEFAULT_LANG = 'en_US'
 
 const dict = {
-  // main.ts
-  'Starting Hello World!': 0,
-  'Web Interface': 1,
-  'The web interface is ready': 2,
-  'The web interface is not ready': 3,
-
-  // interfaces.ts
-  'Web UI': 4,
-  'The web interface of Hello World': 5,
+  'PostgreSQL is ready': 0,
+  'Waiting for PostgreSQL to be ready': 1,
+  'Web Interface': 2,
+  'The web interface is ready': 3,
+  'The web interface is not reachable': 4,
+  'Payment Listener': 5,
+  'The payment listener is connected': 6,
+  'The payment listener is not reachable': 7,
+  'Web UI': 8,
+  'The LaWallet NWC admin dashboard and wallet': 9,
 } as const
 
-/**
- * Plumbing. DO NOT EDIT.
- */
 export type I18nKey = keyof typeof dict
 export type LangDict = Record<(typeof dict)[I18nKey], string>
 export default dict
