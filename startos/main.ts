@@ -11,6 +11,11 @@ export const main = sdk.setupMain(async ({ effects }) => {
    * update) by init/generateSecrets.ts. A missing store.json or Postgres/JWT
    * secret is a hard error — regenerating them would mint a new database
    * password against an already-initialized cluster.
+   *
+   * listenerRequestAuthSecret is deliberately absent from this list: upstream
+   * marks it `.optional()` in both apps and documents a fallback to
+   * LISTENER_AUTH_SECRET, so a store.json restored from a backup taken before
+   * it existed must still boot rather than refuse to start.
    */
   const secrets = await storeJson.read().const(effects)
   if (
@@ -18,11 +23,16 @@ export const main = sdk.setupMain(async ({ effects }) => {
     !secrets.jwtSecret ||
     !secrets.keyVaultSecret ||
     !secrets.listenerAuthSecret ||
-    !secrets.listenerRequestAuthSecret ||
     !secrets.nwcVaultSecret
   ) {
     throw new Error('LaWallet NWC secrets are missing from store.json')
   }
+
+  // Omit the key entirely when unset so the app applies its documented
+  // fallback; passing an empty string would fail its min(32) validation.
+  const requestAuthEnv = secrets.listenerRequestAuthSecret
+    ? { LISTENER_REQUEST_AUTH_SECRET: secrets.listenerRequestAuthSecret }
+    : {}
 
   const databaseUrl = `postgresql://${pgUser}:${secrets.postgresPassword}@127.0.0.1:${pgPort}/${pgDatabase}`
 
@@ -124,7 +134,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
           NWC_VAULT_SECRET: secrets.nwcVaultSecret,
           LISTENER_URL: `http://127.0.0.1:${listenerPort}`,
           LISTENER_AUTH_SECRET: secrets.listenerAuthSecret,
-          LISTENER_REQUEST_AUTH_SECRET: secrets.listenerRequestAuthSecret,
+          ...requestAuthEnv,
           NODE_ENV: 'production',
           PORT: String(uiPort),
           HOSTNAME: '0.0.0.0',
@@ -153,7 +163,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
           DATABASE_URL: databaseUrl,
           LISTENER_PORT: String(listenerPort),
           LISTENER_AUTH_SECRET: secrets.listenerAuthSecret,
-          LISTENER_REQUEST_AUTH_SECRET: secrets.listenerRequestAuthSecret,
+          ...requestAuthEnv,
           NWC_VAULT_SECRET: secrets.nwcVaultSecret,
           WEB_ORIGIN: `http://127.0.0.1:${uiPort}`,
           PROXY_RECONCILE_INTERVAL_MS: '600000',

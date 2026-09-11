@@ -15,6 +15,11 @@ in one job:
 1. Resolves the new `version`, web image, and listener image.
 2. Bumps `version` in `startos/versions/current.ts` (revision reset to `:0`) and
    both `dockerTag` values in `startos/manifest/index.ts`; commits to `master`.
+
+   The `:0` revision is this repo's lane. `Start9-Community/lawallet-startos`
+   publishes the **same package id** (`lawallet-nwc`) and starts each version at
+   `:1` to avoid colliding with what we publish here. Keep `:0` here so the two
+   never mint the same `version:revision`.
 3. Builds the universal `.s9pk` (via Start9's `setup-build-env` action).
 4. Publishes it as a **GitHub Release** `v<version>` with the `.s9pk` attached.
 
@@ -24,8 +29,9 @@ release-asset limit, so it ships directly as a release download.
 ### Required secrets
 
 - **This repo (`lawallet-startos`):** `DEV_KEY` — the StartOS developer signing
-  key (`~/.startos/developer.key.pem`, created by `start-cli init-key`). Used to
-  sign the `.s9pk`.
+  key, created by `start-cli init-key`. The workflow writes it to
+  `~/.startos/id.key.pem` and copies it to `.startos/build.key.pem`, which is
+  where start-sdk 2.0 looks for it. Used to sign the `.s9pk`.
 - **`lawallet-nwc`:** `START9_APP_STORE_DISPATCH_TOKEN` — a fine-grained PAT with
   **Contents: write** on this repo, so `docker-publish.yml`'s
   `notify-start9-app-store` job can dispatch here. (Mirrors
