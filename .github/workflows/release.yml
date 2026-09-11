@@ -102,7 +102,12 @@ jobs:
                   raise SystemExit(f"{path}: expected 1 match, got {n}")
               Path(path).write_text(new)
           once("startos/versions/current.ts", r"version:\s*'[^']*'", f"version: '{version}:0'")
-          once("startos/versions/current.ts", r"releaseNotes:\s*'[^']*'", f"releaseNotes: 'LaWallet NWC {version}.'")
+          # StartOS shows releaseNotes in the update dialog, so give the
+          # operator somewhere to look instead of just the version. Keep the
+          # text free of apostrophes and backslashes: it is substituted into a
+          # single-quoted TS literal via re.subn.
+          notes = f"LaWallet NWC {version}. Release notes: https://github.com/lawalletio/lawallet-nwc/releases/tag/v{version}"
+          once("startos/versions/current.ts", r"releaseNotes:\s*'[^']*'", f"releaseNotes: '{notes}'")
           once(
               "startos/manifest/index.ts",
               r"(web:\s*\{\s*source:\s*\{\s*dockerTag:\s*)'[^']*'",
