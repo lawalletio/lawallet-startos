@@ -95,14 +95,30 @@ jobs:
           version = os.environ["VERSION"]
           image = os.environ["IMAGE"]
           listener_image = os.environ["LISTENER_IMAGE"]
-          def once(path, pat, rep):
+          # Keep the substituted URL free of apostrophes and backslashes so it
+          # is safe inside the single-quoted TS strings below.
+          url = f"https://github.com/lawalletio/lawallet-nwc/releases/tag/v{version}"
+          def once(path, pat, rep, flags=re.M):
               s = Path(path).read_text()
-              new, n = re.subn(pat, rep, s, count=1, flags=re.M)
+              new, n = re.subn(pat, rep, s, count=1, flags=flags)
               if n != 1:
                   raise SystemExit(f"{path}: expected 1 match, got {n}")
               Path(path).write_text(new)
           once("startos/versions/current.ts", r"version:\s*'[^']*'", f"version: '{version}:0'")
-          once("startos/versions/current.ts", r"releaseNotes:\s*'[^']*'", f"releaseNotes: 'LaWallet NWC {version}.'")
+          notes = (
+              "releaseNotes: {\n"
+              f"    en_US: 'LaWallet NWC {version}. {url}',\n"
+              f"    es_ES: 'LaWallet NWC {version}. {url}',\n"
+              f"    de_DE: 'LaWallet NWC {version}. {url}',\n"
+              f"    pl_PL: 'LaWallet NWC {version}. {url}',\n"
+              f"    fr_FR: 'LaWallet NWC {version}. {url}',\n"
+              "  },"
+          )
+          once(
+              "startos/versions/current.ts",
+              r"releaseNotes:\s*(?:'[^']*'|\{[\s\S]*?\n  \},)",
+              notes,
+          )
           once(
               "startos/manifest/index.ts",
               r"(web:\s*\{\s*source:\s*\{\s*dockerTag:\s*)'[^']*'",

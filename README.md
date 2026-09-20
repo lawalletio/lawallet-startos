@@ -5,8 +5,8 @@
 # LaWallet NWC on StartOS
 
 > **Upstream repo:** <https://github.com/lawalletio/lawallet-nwc>
-> **Published images:** `masize/lawallet-nwc:2.6.0`,
-> `masize/lawallet-nwc-listener:2.6.0`
+> **Published images:** see `startos/manifest/index.ts` (`masize/lawallet-nwc`,
+> `masize/lawallet-nwc-listener`). Tags are bumped by the release workflow.
 
 StartOS service package for [LaWallet NWC](https://github.com/lawalletio/lawallet-nwc)
 — an open-source Lightning Address platform with Nostr Wallet Connect (NIP-47).
@@ -30,10 +30,10 @@ single service; no external services are required.
 
 ## Image and Container Runtime
 
-| Image ID   | Image                                    | Command                                              |
-| ---------- | ---------------------------------------- | ---------------------------------------------------- |
-| `web`      | `masize/lawallet-nwc:<version>`           | image entrypoint via `sdk.useEntrypoint()`          |
-| `listener` | `masize/lawallet-nwc-listener:<version>` | image entrypoint via `sdk.useEntrypoint()`          |
+| Image ID   | Image                                    | Command                                            |
+| ---------- | ---------------------------------------- | -------------------------------------------------- |
+| `web`      | `masize/lawallet-nwc:<version>`          | image entrypoint via `sdk.useEntrypoint()`         |
+| `listener` | `masize/lawallet-nwc-listener:<version>` | image entrypoint via `sdk.useEntrypoint()`         |
 | `postgres` | `postgres:15-alpine`                     | image entrypoint plus `listen_addresses=127.0.0.1` |
 
 Architectures: `x86_64`, `aarch64`. The web and listener images are matching
@@ -44,13 +44,16 @@ private to the package; only the web interface is exported.
 
 ## Volume and Data Layout
 
-Single `main` volume, sub-pathed per concern:
+Two volumes (`main` + `db`), matching the Community marketplace listing:
 
-| Subpath        | Mount point              | Purpose                              |
-| -------------- | ------------------------ | ------------------------------------ |
-| `postgresql`   | `/var/lib/postgresql`    | PostgreSQL data directory            |
-| `data`         | `/app/data`              | Cached Nostr profiles (app data dir) |
-| `store.json`   | (package store)          | Generated database, JWT, listener, and NWC-vault secrets |
+| Volume | Subpath      | Mount point                | Purpose                                                  |
+| ------ | ------------ | -------------------------- | -------------------------------------------------------- |
+| `db`   | `data`       | `/var/lib/postgresql/data` | PostgreSQL cluster (backed up with `withPgDump`)         |
+| `main` | `data`       | `/app/data`                | Cached Nostr profiles (app data dir)                     |
+| `main` | `store.json` | (package store)            | Generated database, JWT, listener, and NWC-vault secrets |
+
+Sideload `2.7.0:0` clusters on `main/postgresql/data` are copied to `db/data`
+once on update (`startos/init/migrateSideloadPgdata.ts`).
 
 ---
 
@@ -72,18 +75,18 @@ Single `main` volume, sub-pathed per concern:
 
 No StartOS config form. All runtime environment is derived automatically:
 
-| Env var                       | Value / purpose                                                     |
-| ----------------------------- | ----------------------------------------------------------------- |
-| `DATABASE_URL`                | Shared local PostgreSQL connection                                  |
-| `JWT_SECRET`                  | Generated browser/API session signing key                           |
-| `KEY_VAULT_SECRET`            | Independent generated user-key encryption key                       |
-| `LISTENER_URL`                | Private listener at `http://127.0.0.1:4100`                         |
-| `LISTENER_AUTH_SECRET`        | Generated listener-to-web webhook HMAC key                          |
-| `LISTENER_REQUEST_AUTH_SECRET` | Separate generated web-to-listener bearer key                      |
-| `NWC_VAULT_SECRET`            | Encrypts RemoteWallet/proxy NWC data; shared by web and listener     |
-| `PROXY_RECONCILE_INTERVAL_MS` | `600000` on listener: deferred settlement recovery every ten minutes |
-| `NODE_ENV`                    | `production`                                                        |
-| `PORT` / `HOSTNAME`           | `2288` / `0.0.0.0`                                                  |
+| Env var                        | Value / purpose                                                      |
+| ------------------------------ | -------------------------------------------------------------------- |
+| `DATABASE_URL`                 | Shared local PostgreSQL connection                                   |
+| `JWT_SECRET`                   | Generated browser/API session signing key                            |
+| `KEY_VAULT_SECRET`             | Independent generated user-key encryption key                        |
+| `LISTENER_URL`                 | Private listener at `http://127.0.0.1:4100`                          |
+| `LISTENER_AUTH_SECRET`         | Generated listener-to-web webhook HMAC key                           |
+| `LISTENER_REQUEST_AUTH_SECRET` | Separate generated web-to-listener bearer key                        |
+| `NWC_VAULT_SECRET`             | Encrypts RemoteWallet/proxy NWC data; shared by web and listener     |
+| `PROXY_RECONCILE_INTERVAL_MS`  | `600000` on listener: deferred settlement recovery every ten minutes |
+| `NODE_ENV`                     | `production`                                                         |
+| `PORT` / `HOSTNAME`            | `2288` / `0.0.0.0`                                                   |
 
 Further configuration (domain, lightning addresses, remote wallets, cards,
 branding) happens inside the app after signing in. When using a LaWallet
@@ -98,32 +101,33 @@ its health check becomes ready; the listener starts only after that check.
 
 ## Network Access and Interfaces
 
-| Interface | Port | Protocol | Purpose                                |
-| --------- | ---- | -------- | -------------------------------------- |
+| Interface | Port | Protocol | Purpose                                    |
+| --------- | ---- | -------- | ------------------------------------------ |
 | Web UI    | 2288 | HTTP     | Admin dashboard + wallet + LUD-16 / NIP-05 |
 
 Access via LAN IP, `<hostname>.local`, Tor `.onion`, or a custom domain. For
-lightning addresses / NIP-05 to resolve publicly, forward the three
-`.well-known` paths (`lnurlp`, `nostr.json`, `lawallet.json`) from your domain to this
-interface — see [instructions.md](instructions.md).
+lightning addresses / NIP-05 to resolve publicly, forward the
+`.well-known` paths (`lnurlp`, `nostr.json`, `lawallet.json`, `verify`) from your
+domain to this interface — see [instructions.md](instructions.md).
 
 ---
 
 ## Health Checks
 
-| Check           | Method                                      |
-| --------------- | ------------------------------------------- |
-| Web Interface   | HTTP GET `http://127.0.0.1:2288/api/health` |
-| Payment Listener | HTTP GET `http://127.0.0.1:4100/health`   |
-| PostgreSQL      | `pg_isready` (internal)                      |
+| Check            | Method                                      |
+| ---------------- | ------------------------------------------- |
+| Web Interface    | HTTP GET `http://127.0.0.1:2288/api/health` |
+| Payment Listener | HTTP GET `http://127.0.0.1:4100/health`     |
+| PostgreSQL       | `pg_isready` (internal)                     |
 
 ---
 
 ## Backups and Restore
 
-The `main` volume is backed up in full, including the database, encrypted proxy
-settings, app data, and every generated secret. Restoring it preserves access
-to the saved proxy NWC connection and NIP-57 signer.
+Backups dump Postgres from the `db` volume (`sdk.Backups.withPgDump`) and copy
+`main` (app data plus `store.json`). Restoring preserves access to the saved
+proxy NWC connection and NIP-57 signer. A sideload-era backup that still has
+`main/postgresql/data` is migrated onto `db` during restore init.
 
 ---
 
@@ -154,24 +158,42 @@ when lawallet-nwc publishes a new release. See [UPDATING.md](UPDATING.md) and
 ```yaml
 package_id: lawallet-nwc
 images:
-  web: masize/lawallet-nwc:2.6.0
-  listener: masize/lawallet-nwc-listener:2.6.0
+  web: masize/lawallet-nwc (tag in startos/manifest/index.ts)
+  listener: masize/lawallet-nwc-listener (tag in startos/manifest/index.ts)
   postgres: postgres:15-alpine
 architectures: [x86_64, aarch64]
 volumes:
   main:
-    postgresql: /var/lib/postgresql
     data: /app/data
+    store.json: package secrets
+  db:
+    data: /var/lib/postgresql/data
 ports:
   ui: 2288
 health: GET http://127.0.0.1:2288/api/health
 startos_managed_env_vars:
-  [DATABASE_URL, JWT_SECRET, KEY_VAULT_SECRET, LISTENER_URL,
-   LISTENER_AUTH_SECRET, LISTENER_REQUEST_AUTH_SECRET, NWC_VAULT_SECRET,
-   PROXY_RECONCILE_INTERVAL_MS, NODE_ENV, PORT, HOSTNAME]
+  [
+    DATABASE_URL,
+    JWT_SECRET,
+    KEY_VAULT_SECRET,
+    LISTENER_URL,
+    LISTENER_AUTH_SECRET,
+    LISTENER_REQUEST_AUTH_SECRET,
+    NWC_VAULT_SECRET,
+    PROXY_RECONCILE_INTERVAL_MS,
+    NODE_ENV,
+    PORT,
+    HOSTNAME,
+  ]
 generated_secrets:
-  [JWT_SECRET, KEY_VAULT_SECRET, LISTENER_AUTH_SECRET,
-   LISTENER_REQUEST_AUTH_SECRET, NWC_VAULT_SECRET, postgresPassword]
+  [
+    JWT_SECRET,
+    KEY_VAULT_SECRET,
+    LISTENER_AUTH_SECRET,
+    LISTENER_REQUEST_AUTH_SECRET,
+    NWC_VAULT_SECRET,
+    postgresPassword,
+  ]
 first_run: claim root admin by signing in with a Nostr key (NIP-07 / nsec)
 dependencies: none
 ```

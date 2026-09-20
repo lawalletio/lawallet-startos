@@ -10,7 +10,7 @@ export const manifest = setupManifest({
   marketingUrl: 'https://lawallet.io',
   donationUrl: 'https://docs.lawallet.io',
   description: { short, long },
-  volumes: ['main'],
+  volumes: ['main', 'db'],
   images: {
     web: {
       source: { dockerTag: 'masize/lawallet-nwc:2.7.0' },
