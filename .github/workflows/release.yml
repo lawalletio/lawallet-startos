@@ -24,6 +24,11 @@ on:
         description: 'Full listener image tag. Defaults to masize/lawallet-nwc-listener:<version>.'
         required: false
         type: string
+      skip_bump:
+        description: 'Publish the committed manifest as-is (one-off revisions such as 2.7.0:1)'
+        required: false
+        type: boolean
+        default: false
   push:
     tags:
       - 'v*'
@@ -54,11 +59,16 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_IMAGE: ${{ inputs.image }}
           INPUT_LISTENER_IMAGE: ${{ inputs.listener_image }}
+          INPUT_SKIP_BUMP: ${{ inputs.skip_bump }}
           REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           if [ "${EVENT}" = "push" ]; then
             VERSION="${REF_NAME#v}"
+            BUMP=false
+          elif [ "${INPUT_SKIP_BUMP:-}" = "true" ]; then
+            VERSION="${DISPATCH_VERSION:-${INPUT_VERSION:-}}"
+            VERSION="${VERSION#v}"
             BUMP=false
           else
             VERSION="${DISPATCH_VERSION:-${INPUT_VERSION:-}}"

@@ -46,9 +46,14 @@ release-asset limit, so it ships directly as a release download.
 ## Manual release
 
 - **Re-run the current version:** push a tag, e.g. `git tag v1.0.10 && git push origin v1.0.10`.
+  Tag pushes do not rewrite `current.ts`.
+- **Publish a committed one-off revision** (such as `2.7.0:1`): run the
+  **Release** workflow with `version` set to the upstream version and
+  `skip_bump` checked. That rebuilds and replaces the `v<version>` `.s9pk`
+  without resetting the revision to `:0`.
 - **Package a specific upstream version:** run the **Release** workflow via
   _Actions → Release → Run workflow_ with a `version` and optional web/listener
-  image overrides.
+  image overrides. Leave `skip_bump` off so the bot writes `{version}:0`.
 - **Locally:** edit `startos/versions/current.ts` (`version: '<new>:0'`) and
   both image tags in `startos/manifest/index.ts`, then `npm install && make
 universal` → `lawallet-nwc.s9pk`, and `make install` to sideload to a StartOS
