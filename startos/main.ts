@@ -8,9 +8,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
    * ======================== Setup ========================
    *
    * Secrets are written on install (and missing NWC/listener keys on
-   * update) by init/generateSecrets.ts. A missing store.json or Postgres/JWT
-   * secret is a hard error — regenerating them would mint a new database
-   * password against an already-initialized cluster.
+   * update/restore) by init/generateSecrets.ts. A missing store.json or
+   * Postgres/JWT secret is a hard error — regenerating them would mint a
+   * new database password against an already-initialized cluster.
    */
   const secrets = await storeJson.read().const(effects)
   if (
@@ -29,16 +29,16 @@ export const main = sdk.setupMain(async ({ effects }) => {
   /**
    * ======================== Subcontainers ========================
    *
-   * Postgres stays on `main` (subpath `postgresql`) so existing sideload
-   * installs keep their data. Do not split onto a `db` volume without a
-   * StartOS version migration.
+   * Postgres lives on the `db` volume (`db/data`). Sideload 2.7.0:0 clusters
+   * on `main/postgresql/data` are moved there once by
+   * init/migrateSideloadPgdata.ts before these daemons start.
    */
   const postgres = sdk.SubContainer.of(
     effects,
     { imageId: 'postgres' },
     sdk.Mounts.of().mountVolume({
-      volumeId: 'main',
-      subpath: 'postgresql',
+      volumeId: 'db',
+      subpath: null,
       mountpoint: '/var/lib/postgresql',
       readonly: false,
     }),
