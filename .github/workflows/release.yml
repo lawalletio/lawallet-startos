@@ -35,6 +35,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: release-${{ github.event.client_payload.version || inputs.version || github.ref }}
@@ -44,6 +45,8 @@ jobs:
   release:
     name: Build + publish .s9pk
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -182,3 +185,40 @@ jobs:
 
           Install: download the \`.s9pk\` and sideload it via **StartOS → System → Sideload a Service**."
           fi
+
+  community-pr:
+    name: Open Community registry PR
+    needs: release
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout workflow scripts
+        uses: actions/checkout@v4
+        with:
+          path: workflow-src
+
+      - name: Checkout sideload master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          path: sideload
+
+      - name: Overlay and open Start9-Community PR
+        env:
+          GH_TOKEN: ${{ secrets.START9_COMMUNITY_PR_TOKEN }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::error::START9_COMMUNITY_PR_TOKEN is not set. Add a PAT that can push branches to this repo and open PRs on Start9-Community/lawallet-startos."
+            exit 1
+          fi
+          mkdir -p sideload/scripts sideload/community-overlay
+          cp workflow-src/scripts/overlay-community.sh sideload/scripts/
+          cp workflow-src/scripts/open-community-pr.sh sideload/scripts/
+          cp workflow-src/community-overlay/README.md sideload/community-overlay/
+          cp workflow-src/community-overlay/UPDATING.md sideload/community-overlay/
+          chmod +x sideload/scripts/*.sh
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          bash sideload/scripts/open-community-pr.sh "${VERSION}"
