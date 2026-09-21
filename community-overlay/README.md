@@ -2,16 +2,22 @@
   <img src="icon.svg" alt="LaWallet NWC Logo" width="18%">
 </p>
 
-# LaWallet NWC on StartOS
+# LaWallet NWC on StartOS (Community registry)
 
 > **Upstream repo:** <https://github.com/lawalletio/lawallet-nwc>
-> **Published images:** see `startos/manifest/index.ts` (`masize/lawallet-nwc`,
-> `masize/lawallet-nwc-listener`). Tags are bumped by the release workflow.
+> **Sideload wrapper:** <https://github.com/lawalletio/lawallet-startos>
+> **This repo:** Community-registry listing. Builds for Marketplace → Community
+> are made from here only, after a reviewed pull request.
 
 StartOS service package for [LaWallet NWC](https://github.com/lawalletio/lawallet-nwc)
 — an open-source Lightning Address platform with Nostr Wallet Connect (NIP-47).
 This package runs the web app, NWC listener, and PostgreSQL database in a
 single service; no external services are required.
+
+Install from **Marketplace → Community**, or sideload the matching
+`.s9pk` from [lawalletio releases](https://github.com/lawalletio/lawallet-startos/releases).
+From `2.7.0:1` the two channels share `id: lawallet-nwc` and the same `main` +
+`db` layout, so either can update the other in place.
 
 ## Table of Contents
 
@@ -44,7 +50,7 @@ private to the package; only the web interface is exported.
 
 ## Volume and Data Layout
 
-Two volumes (`main` + `db`), matching the Community marketplace listing:
+Two volumes (`main` + `db`):
 
 | Volume | Subpath      | Mount point                | Purpose                                                  |
 | ------ | ------------ | -------------------------- | -------------------------------------------------------- |
@@ -93,9 +99,6 @@ branding) happens inside the app after signing in. When using a LaWallet
 release with the deferred proxy, its NWC URI, fee, and NIP-57 receipt signer
 `nsec` are entered in **Admin → Settings → NWC Services**. The `nsec` is
 encrypted with `NWC_VAULT_SECRET`; it is not an environment variable.
-The same vault encrypts every RemoteWallet NWC connection string. On upgrade,
-web encrypts any legacy plaintext rows after `prisma migrate deploy` and before
-its health check becomes ready; the listener starts only after that check.
 
 ---
 
@@ -125,8 +128,7 @@ domain to this interface — see [instructions.md](instructions.md).
 ## Backups and Restore
 
 Backups dump Postgres from the `db` volume (`sdk.Backups.withPgDump`) and copy
-`main` (app data plus `store.json`). Restoring preserves access to the saved
-proxy NWC connection and NIP-57 signer. A sideload-era backup that still has
+`main` (app data plus `store.json`). A sideload-era backup that still has
 `main/postgresql/data` is migrated onto `db` during restore init.
 
 ---
@@ -140,17 +142,17 @@ Node.js, and Docker.
 npm install
 make            # builds per-arch: lawallet-nwc_x86_64.s9pk, lawallet-nwc_aarch64.s9pk
 make universal  # single universal lawallet-nwc.s9pk
-make install    # sideload to a StartOS host (see ~/.startos/config.yaml)
 ```
+
+Registry releases are cut from this repo's `.github/workflows` after a merge
+to `master`. Sideload `.s9pk` files are published from lawalletio.
 
 ---
 
 ## Updating
 
-The web and listener image tags plus package version are bumped automatically
-when lawallet-nwc publishes a new release. The same workflow then opens a PR
-against [Start9-Community/lawallet-startos](https://github.com/Start9-Community/lawallet-startos)
-for the registry listing. See [UPDATING.md](UPDATING.md).
+lawalletio opens a pull request against this repo after each upstream image
+publish. Review and merge here — see [UPDATING.md](UPDATING.md).
 
 ---
 
@@ -172,20 +174,8 @@ volumes:
 ports:
   ui: 2288
 health: GET http://127.0.0.1:2288/api/health
-startos_managed_env_vars:
-  [
-    DATABASE_URL,
-    JWT_SECRET,
-    KEY_VAULT_SECRET,
-    LISTENER_URL,
-    LISTENER_AUTH_SECRET,
-    LISTENER_REQUEST_AUTH_SECRET,
-    NWC_VAULT_SECRET,
-    PROXY_RECONCILE_INTERVAL_MS,
-    NODE_ENV,
-    PORT,
-    HOSTNAME,
-  ]
+registry: Start9-Community (this repo)
+sideload: lawalletio/lawallet-startos GitHub Releases
 generated_secrets:
   [
     JWT_SECRET,
