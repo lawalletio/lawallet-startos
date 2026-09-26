@@ -8,7 +8,7 @@ export const manifest = setupManifest({
   packageRepo: 'https://github.com/lawalletio/lawallet-startos',
   upstreamRepo: 'https://github.com/lawalletio/lawallet-nwc',
   marketingUrl: 'https://lawallet.io',
-  donationUrl: 'https://docs.lawallet.io',
+  donationUrl: null,
   description: { short, long },
   volumes: ['main', 'db'],
   images: {
