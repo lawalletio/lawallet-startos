@@ -4,14 +4,6 @@ import { storeJson } from './fileModels/store.json'
 import { listenerPort, pgDatabase, pgPort, pgUser, uiPort } from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
-  /**
-   * ======================== Setup ========================
-   *
-   * Secrets are written on install (and missing NWC/listener keys on
-   * update/restore) by init/generateSecrets.ts. A missing store.json or
-   * Postgres/JWT secret is a hard error — regenerating them would mint a
-   * new database password against an already-initialized cluster.
-   */
   const secrets = await storeJson.read().const(effects)
   if (
     !secrets?.postgresPassword ||
@@ -26,13 +18,6 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   const databaseUrl = `postgresql://${pgUser}:${secrets.postgresPassword}@127.0.0.1:${pgPort}/${pgDatabase}`
 
-  /**
-   * ======================== Subcontainers ========================
-   *
-   * Postgres lives on the `db` volume (`db/data`). Sideload 2.7.0:0 clusters
-   * on `main/postgresql/data` are moved there once by
-   * init/migrateSideloadPgdata.ts before these daemons start.
-   */
   const postgres = sdk.SubContainer.of(
     effects,
     { imageId: 'postgres' },
@@ -64,14 +49,6 @@ export const main = sdk.setupMain(async ({ effects }) => {
     'listener-sub',
   )
 
-  /**
-   * ======================== Daemons ========================
-   *
-   * Postgres comes up first on loopback only. The web app then runs the
-   * image's `prisma migrate deploy && node server.js`, which owns the schema
-   * both it and the listener read. The listener waits for that migration to
-   * land before opening its relay connections.
-   */
   return sdk.Daemons.of(effects)
     .addDaemon('postgres', {
       subcontainer: postgres,
@@ -156,7 +133,6 @@ export const main = sdk.setupMain(async ({ effects }) => {
           LISTENER_REQUEST_AUTH_SECRET: secrets.listenerRequestAuthSecret,
           NWC_VAULT_SECRET: secrets.nwcVaultSecret,
           WEB_ORIGIN: `http://127.0.0.1:${uiPort}`,
-          PROXY_RECONCILE_INTERVAL_MS: '600000',
           NODE_ENV: 'production',
         },
       },

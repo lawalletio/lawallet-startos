@@ -4,197 +4,204 @@
 
 # LaWallet NWC on StartOS
 
-> **Upstream repo:** <https://github.com/lawalletio/lawallet-nwc>
-> **Published images:** see `startos/manifest/index.ts` (`masize/lawallet-nwc`,
-> `masize/lawallet-nwc-listener`). Tags are bumped by the release workflow.
+> Everything not listed in this document should behave the same as upstream
+> LaWallet NWC. If a feature, setting, or behavior is not mentioned here, the
+> upstream documentation is accurate and fully applicable — see the
+> Documentation section of `instructions.md` for links.
 
-StartOS service package for [LaWallet NWC](https://github.com/lawalletio/lawallet-nwc)
-— an open-source Lightning Address platform with Nostr Wallet Connect (NIP-47).
-This package runs the web app, NWC listener, and PostgreSQL database in a
-single service; no external services are required.
+[LaWallet NWC](https://github.com/lawalletio/lawallet-nwc) is a Nostr Wallet Connect service: it custodies Nostr keys and answers wallet-connect requests on their behalf. This package runs its two halves — the web application and the payment listener — with a private PostgreSQL sidecar and generates every secret they share.
+
+- **Upstream repo:** <https://github.com/lawalletio/lawallet-nwc>
+- **Wrapper repo:** <https://github.com/lawalletio/lawallet-startos>
+
+The sideload package and the Community listing share this package id and the same volumes, so an install from either channel can update to the other in place. Identical trees share a revision; if the Community tree has drifted from this tag, that listing takes the next revision.
+
+---
 
 ## Table of Contents
 
 - [Image and Container Runtime](#image-and-container-runtime)
 - [Volume and Data Layout](#volume-and-data-layout)
-- [Installation and First-Run Flow](#installation-and-first-run-flow)
-- [Configuration Management](#configuration-management)
+- [File Models](#file-models)
+- [Dependencies](#dependencies)
 - [Network Access and Interfaces](#network-access-and-interfaces)
+- [Installation and First-Run Flow](#installation-and-first-run-flow)
+- [Actions](#actions)
+- [Tasks](#tasks)
 - [Health Checks](#health-checks)
 - [Backups and Restore](#backups-and-restore)
-- [Building](#building)
-- [Updating](#updating)
+- [Limitations and Differences](#limitations-and-differences)
 - [Quick Reference for AI Consumers](#quick-reference-for-ai-consumers)
 
 ---
 
 ## Image and Container Runtime
 
-| Image ID   | Image                                    | Command                                            |
-| ---------- | ---------------------------------------- | -------------------------------------------------- |
-| `web`      | `masize/lawallet-nwc:<version>`          | image entrypoint via `sdk.useEntrypoint()`         |
-| `listener` | `masize/lawallet-nwc-listener:<version>` | image entrypoint via `sdk.useEntrypoint()`         |
-| `postgres` | `postgres:15-alpine`                     | image entrypoint plus `listen_addresses=127.0.0.1` |
+Three images: two upstream halves of the application, and a PostgreSQL sidecar.
 
-Architectures: `x86_64`, `aarch64`. The web and listener images are matching
-multi-arch images built by lawallet-nwc CI. Postgres and the listener are
-private to the package; only the web interface is exported.
+| Property      | Value                                                             |
+| ------------- | ----------------------------------------------------------------- |
+| Images        | `masize/lawallet-nwc`, `masize/lawallet-nwc-listener`, `postgres` |
+| Architectures | x86_64, aarch64                                                   |
+| Entrypoint    | Each image's own, via `sdk.useEntrypoint()`                       |
 
----
+| Subcontainer   | Purpose                                             |
+| -------------- | --------------------------------------------------- |
+| `web-sub`      | The dashboard and wallet — attach here for app logs |
+| `listener-sub` | The payment listener                                |
+| `postgres-sub` | The private database                                |
+
+**The two application images move in lockstep.** They are tagged by the same upstream release, so a version bump changes both or neither.
 
 ## Volume and Data Layout
 
-Two volumes (`main` + `db`), matching the Community marketplace listing:
+Two volumes, backed up by different mechanisms.
 
-| Volume | Subpath      | Mount point                | Purpose                                                  |
-| ------ | ------------ | -------------------------- | -------------------------------------------------------- |
-| `db`   | `data`       | `/var/lib/postgresql/data` | PostgreSQL cluster (backed up with `withPgDump`)         |
-| `main` | `data`       | `/app/data`                | Cached Nostr profiles (app data dir)                     |
-| `main` | `store.json` | (package store)            | Generated database, JWT, listener, and NWC-vault secrets |
+| Volume | Mount Point           | Purpose                                              |
+| ------ | --------------------- | ---------------------------------------------------- |
+| `main` | `/app/data` (subpath) | Application data, and the store at the root          |
+| `db`   | `/var/lib/postgresql` | The PostgreSQL data directory (`data` is the cluster) |
 
-Sideload `2.7.0:0` clusters on `main/postgresql/data` are copied to `db/data`
-once on update (`startos/init/migrateSideloadPgdata.ts`).
+The listener mounts nothing — everything it needs is in the database.
 
----
+Older sideload installs kept the PostgreSQL cluster on the main volume. On update it is moved onto `db` once; a later start never sees the old path.
 
-## Installation and First-Run Flow
+## File Models
 
-1. On **install**, the package generates independent database, JWT, listener
-   webhook, listener request, and NWC-vault secrets and persists them to the
-   `main` volume (`startos/init/generateSecrets.ts`).
-2. On **start**, Postgres comes up first; once `pg_isready`, the web app runs
-   `prisma migrate deploy` and starts. The listener waits for the web health
-   check, ensuring migrations are complete before it reads shared tables.
-3. There is no admin password — the operator claims the **root admin** role by
-   signing in with a Nostr key (NIP-07 or nsec) via the Web UI. See
-   [instructions.md](instructions.md).
+One model, holding six secrets and nothing else.
 
----
+| File         | Format | Modelled                | Written by |
+| ------------ | ------ | ----------------------- | ---------- |
+| `store.json` | JSON   | Yes — `FileHelper.json` | Init       |
 
-## Configuration Management
+All six are **write-once**, generated at install and never regenerated:
 
-No StartOS config form. All runtime environment is derived automatically:
+- **The database password**, which the PostgreSQL cluster was initialized with.
+- **The session signing secret**, which every issued session depends on.
+- **The key vault secret**, which encrypts the custodied Nostr keys at rest.
+- **The listener webhook secret**, which authenticates listener-to-web callbacks.
+- **The listener request secret**, which authenticates web-to-listener calls.
+- **The NWC vault secret**, which encrypts RemoteWallet and proxy NWC data.
 
-| Env var                        | Value / purpose                                                      |
-| ------------------------------ | -------------------------------------------------------------------- |
-| `DATABASE_URL`                 | Shared local PostgreSQL connection                                   |
-| `JWT_SECRET`                   | Generated browser/API session signing key                            |
-| `KEY_VAULT_SECRET`             | Independent generated user-key encryption key                        |
-| `LISTENER_URL`                 | Private listener at `http://127.0.0.1:4100`                          |
-| `LISTENER_AUTH_SECRET`         | Generated listener-to-web webhook HMAC key                           |
-| `LISTENER_REQUEST_AUTH_SECRET` | Separate generated web-to-listener bearer key                        |
-| `NWC_VAULT_SECRET`             | Encrypts RemoteWallet/proxy NWC data; shared by web and listener     |
-| `PROXY_RECONCILE_INTERVAL_MS`  | `600000` on listener: deferred settlement recovery every ten minutes |
-| `NODE_ENV`                     | `production`                                                         |
-| `PORT` / `HOSTNAME`            | `2288` / `0.0.0.0`                                                   |
+**Regenerating any of them destroys data rather than rotating a credential** — the cluster becomes unopenable, sessions become invalid, or the custodied keys become undecryptable. So `main` fails loudly on a missing secret instead of minting a replacement, and there is deliberately no action to rotate them.
 
-Further configuration (domain, lightning addresses, remote wallets, cards,
-branding) happens inside the app after signing in. When using a LaWallet
-release with the deferred proxy, its NWC URI, fee, and NIP-57 receipt signer
-`nsec` are entered in **Admin → Settings → NWC Services**. The `nsec` is
-encrypted with `NWC_VAULT_SECRET`; it is not an environment variable.
-The same vault encrypts every RemoteWallet NWC connection string. On upgrade,
-web encrypts any legacy plaintext rows after `prisma migrate deploy` and before
-its health check becomes ready; the listener starts only after that check.
+The application's own settings are its business, in the database, and are not modelled.
 
----
+## Dependencies
+
+None. PostgreSQL runs as a private sidecar of this service rather than as a StartOS dependency, and the wallet reaches Nostr relays directly.
 
 ## Network Access and Interfaces
 
-| Interface | Port | Protocol | Purpose                                    |
-| --------- | ---- | -------- | ------------------------------------------ |
-| Web UI    | 2288 | HTTP     | Admin dashboard + wallet + LUD-16 / NIP-05 |
+One interface. Everything else is loopback inside the service.
 
-Access via LAN IP, `<hostname>.local`, Tor `.onion`, or a custom domain. For
-lightning addresses / NIP-05 to resolve publicly, forward the
-`.well-known` paths (`lnurlp`, `nostr.json`, `lawallet.json`, `verify`) from your
-domain to this interface — see [instructions.md](instructions.md).
+| Interface | Id   | Type | Port | Description              |
+| --------- | ---- | ---- | ---- | ------------------------ |
+| Web UI    | `ui` | ui   | 2288 | The dashboard and wallet |
 
----
+Bound on the `ui-multi` MultiHost over HTTP and not masked.
+
+**The listener's API is deliberately not exported.** It is reachable only over container loopback, authenticated with the shared secret — it exists for the web application to call, not for anyone else, and exporting it would publish a second authenticated path into the wallet.
+
+PostgreSQL is likewise internal, on the service's own namespace.
+
+## Installation and First-Run Flow
+
+Install generates the six secrets. There is no task, no credential to record, and no configuration — the user creates their account in the web interface.
+
+Start-up is ordered: PostgreSQL first, then a oneshot fixing ownership on the application's data directory, then the web application, then the listener behind it. The web application carries a generous grace period because its first start runs database migrations.
+
+**The listener starts last and depends on the web application**, which reflects how they work: the web application is the front door, and the listener is what keeps wallet connections answering while nobody is looking at the page.
+
+## Actions
+
+None. The package ships an empty action set — the application is configured entirely from its own interface.
+
+There is deliberately no secret-rotation action, for the reason under [File Models](#file-models).
+
+## Tasks
+
+None. This package raises no tasks, so the service is never held on a prompt and its ordinary controls are always available.
 
 ## Health Checks
 
-| Check            | Method                                      |
-| ---------------- | ------------------------------------------- |
-| Web Interface    | HTTP GET `http://127.0.0.1:2288/api/health` |
-| Payment Listener | HTTP GET `http://127.0.0.1:4100/health`     |
-| PostgreSQL       | `pg_isready` (internal)                     |
+Three checks, two of them shown.
 
----
+| Check      | Displayed as       | Method                                | Grace |
+| ---------- | ------------------ | ------------------------------------- | ----- |
+| `web`      | "Web Interface"    | The application's health endpoint     | 60s   |
+| `listener` | "Payment Listener" | The listener's health endpoint        | 30s   |
+| `postgres` | — internal         | The database is accepting connections | —     |
+
+**Both application checks query a real health endpoint** rather than probing a port, so they report that the process is serving rather than merely that something is bound.
+
+**"Payment Listener" is the one that matters for wallet connections.** The web interface can be perfectly healthy while the listener is not, and in that state the dashboard loads and wallet-connect requests go unanswered.
+
+A service restarting with no failing check displayed is the database; the service logs name it.
 
 ## Backups and Restore
 
-Backups dump Postgres from the `db` volume (`sdk.Backups.withPgDump`) and copy
-`main` (app data plus `store.json`). Restoring preserves access to the saved
-proxy NWC connection and NIP-57 signer. A sideload-era backup that still has
-`main/postgresql/data` is migrated onto `db` during restore init.
+**The database is dumped; the application volume is copied.**
 
----
+An rsync of a live PostgreSQL data directory is not crash-consistent, so the database is captured as a logical dump instead — which also survives a future PostgreSQL image bump rather than being tied to the on-disk format it was taken with. **The `db` volume's files are never captured**; a restore starts the engine and replays the dump into it. A volume that is dumped is not a volume that is backed up.
 
-## Building
+**A backup made before this package's dump-based backups cannot be restored into it.** Take a new backup after updating.
 
-Requires the [StartOS SDK](https://docs.start9.com/packaging) (`start-cli`),
-Node.js, and Docker.
+**The backup contains the custodied Nostr keys, in recoverable form.** They are encrypted in the database, and the key that decrypts them is in the store on the other volume, and the backup holds both. That is what makes a restore work, and what makes the backup as sensitive as the keys.
 
-```sh
-npm install
-make            # builds per-arch: lawallet-nwc_x86_64.s9pk, lawallet-nwc_aarch64.s9pk
-make universal  # single universal lawallet-nwc.s9pk
-make install    # sideload to a StartOS host (see ~/.startos/config.yaml)
-```
+The dump authenticates with the database password from the store, so the two halves are not independent in that direction either.
 
----
+## Limitations and Differences
 
-## Updating
-
-The web and listener image tags plus package version are bumped automatically
-when lawallet-nwc publishes a new release. The same workflow then opens a PR
-against [Start9-Community/lawallet-startos](https://github.com/Start9-Community/lawallet-startos)
-for the registry listing. See [UPDATING.md](UPDATING.md).
+1. **These secrets cannot be rotated.** Each is load-bearing for existing data, so there is no action for it.
+2. **The backup is equivalent to the custodied keys.** Encryption at rest protects the database file, not the backup.
+3. **No configuration surface at all** — no actions, no settings, no file models beyond the secrets.
+4. **The listener is internal.** Its API is loopback-only and authenticated with a shared secret.
+5. **The datastore is private.** PostgreSQL is a sidecar of this service and cannot be shared or substituted.
+6. **The two upstream images must stay on the same version.**
 
 ---
 
 ## Quick Reference for AI Consumers
 
 ```yaml
-package_id: lawallet-nwc
-images:
-  web: masize/lawallet-nwc (tag in startos/manifest/index.ts)
-  listener: masize/lawallet-nwc-listener (tag in startos/manifest/index.ts)
-  postgres: postgres:15-alpine
-architectures: [x86_64, aarch64]
+package_id: lawallet-nwc # note: the repo is lawallet-startos
+image: masize/lawallet-nwc # plus masize/lawallet-nwc-listener and postgres
+architectures:
+  - x86_64
+  - aarch64
+subcontainers:
+  - web-sub
+  - listener-sub
+  - postgres-sub
 volumes:
-  main:
-    data: /app/data
-    store.json: package secrets
-  db:
-    data: /var/lib/postgresql/data
-ports:
-  ui: 2288
-health: GET http://127.0.0.1:2288/api/health
+  main: /app/data # app data at a subpath; store.json at the volume root
+  db: /var/lib/postgresql # cluster at data/
+file_models:
+  - store.json # six write-once secrets
 startos_managed_env_vars:
-  [
-    DATABASE_URL,
-    JWT_SECRET,
-    KEY_VAULT_SECRET,
-    LISTENER_URL,
-    LISTENER_AUTH_SECRET,
-    LISTENER_REQUEST_AUTH_SECRET,
-    NWC_VAULT_SECRET,
-    PROXY_RECONCILE_INTERVAL_MS,
-    NODE_ENV,
-    PORT,
-    HOSTNAME,
-  ]
-generated_secrets:
-  [
-    JWT_SECRET,
-    KEY_VAULT_SECRET,
-    LISTENER_AUTH_SECRET,
-    LISTENER_REQUEST_AUTH_SECRET,
-    NWC_VAULT_SECRET,
-    postgresPassword,
-  ]
-first_run: claim root admin by signing in with a Nostr key (NIP-07 / nsec)
-dependencies: none
+  - POSTGRES_USER
+  - POSTGRES_PASSWORD
+  - POSTGRES_DB
+  - DATABASE_URL
+  - JWT_SECRET
+  - KEY_VAULT_SECRET
+  - NWC_VAULT_SECRET
+  - LISTENER_URL
+  - LISTENER_AUTH_SECRET
+  - LISTENER_REQUEST_AUTH_SECRET
+  - LISTENER_PORT
+  - WEB_ORIGIN
+  - NODE_ENV
+  - PORT
+  - HOSTNAME
+dependencies: []
+interfaces:
+  ui: { type: ui, port: 2288 } # the listener on 4100 and postgres are internal
+actions: []
+tasks: []
+health_checks:
+  - web # displayed "Web Interface"
+  - listener # displayed "Payment Listener"
+  - postgres # internal
 ```

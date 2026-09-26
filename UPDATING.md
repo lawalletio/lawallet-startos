@@ -7,14 +7,20 @@ distributed as the matching multi-arch images `masize/lawallet-nwc` and
 [Start9-Community/lawallet-startos](https://github.com/Start9-Community/lawallet-startos)
 is the **Community-registry** tree. Registry builds are made from that repo
 only; Start9 will not pull this one. Both packages share `id: lawallet-nwc`
-and the same `main` + `db` layout, so `:0` (sideload) and `:1` (registry) of
-the same upstream version are interchangeable after `2.7.0:1`. The `:1` lane
-is no longer a data-layout split.
+and the same `main` + `db` layout.
 
-`2.7.0:1` itself is a one-off: it moves a sideload `2.7.0:0` cluster from
-`main/postgresql/data` onto `db/data`. Future auto-bumps reset the revision
-to `:0`. After each bump this workflow opens (or updates) a pull request
-against the Community fork for them to review.
+**Identical trees share a revision.** A review fix or Community-only change
+that is not on the sideload tag means the registry takes the next revision.
+This wrapper currently ships `2.7.1:1` on both channels after the Community
+review fixes.
+
+Older sideload installs kept Postgres on `main/postgresql/data`. Updating to
+this layout copies that cluster onto `db` once.
+
+Future auto-bumps reset the revision to `:0` and leave handwritten
+`releaseNotes` in `startos/versions/current.ts` alone. After each bump this
+workflow opens (or updates) a pull request against the Community fork. While
+that PR has requested changes, the next bump is pushed to the same branch.
 
 ## Automatic (recommended)
 
@@ -24,10 +30,9 @@ lawallet-nwc's `docker-publish.yml` fires a GitHub `repository_dispatch` event
 after each image publish. `.github/workflows/release.yml` then:
 
 1. Resolves the new `version`, web image, and listener image.
-2. Bumps `version` in `startos/versions/current.ts` to `{version}:0`, rewrites
-   the five-locale `releaseNotes` object (one line plus the upstream release
-   URL), and both `dockerTag` values in `startos/manifest/index.ts`; commits to
-   `master`.
+2. Bumps `version` in `startos/versions/current.ts` to `{version}:0` and both
+   `dockerTag` values in `startos/manifest/index.ts`; commits to `master`.
+   Handwritten `releaseNotes` are left as-is.
 3. Builds the universal `.s9pk` (via Start9's `setup-build-env` action).
 4. Publishes it as a **GitHub Release** `v<version>` with the `.s9pk` attached.
 5. Overlays this tree onto Community `master` (keeping their `.github/workflows`)
@@ -55,7 +60,7 @@ GitHub's 2 GiB release-asset limit, so it ships directly as a release download.
 
 - **Re-run the current version:** push a tag, e.g. `git tag v1.0.10 && git push origin v1.0.10`.
   Tag pushes do not rewrite `current.ts`.
-- **Publish a committed one-off revision** (such as `2.7.0:1`): run the
+- **Publish a committed one-off revision** (such as this `2.7.1:1`): run the
   **Release** workflow with `version` set to the upstream version and
   `skip_bump` checked. That rebuilds and replaces the `v<version>` `.s9pk`
   without resetting the revision to `:0`.
@@ -73,10 +78,10 @@ Every release attaches `lawallet-nwc.s9pk` to a GitHub Release, e.g.
 `https://github.com/lawalletio/lawallet-startos/releases/latest/download/lawallet-nwc.s9pk`
 — a stable public URL users can download and **Sideload** into StartOS.
 
-After `2.7.0:1`, the Community marketplace listing is the default install path
-and is compatible with this sideload package. Registry bits still have to land
-as a PR on `Start9-Community/lawallet-startos` — the Release workflow opens
-that PR; they review and merge.
+The Community marketplace listing is the default install path and is compatible
+with this sideload package when the trees match. Registry bits still have to
+land as a PR on `Start9-Community/lawallet-startos` — the Release workflow
+opens that PR; they review and merge.
 
 ## Getting into the official Start9 Marketplace
 
