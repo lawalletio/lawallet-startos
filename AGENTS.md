@@ -1,18 +1,38 @@
 # AGENTS.md
 
-StartOS service package for **LaWallet NWC** — builds a `.s9pk` that runs the
-`masize/lawallet-nwc` web image, `masize/lawallet-nwc-listener`, and a bundled
-`postgres:15-alpine` sidecar.
+This is a StartOS service-package repository — it builds a `.s9pk` for StartOS.
 
-- Source of truth for the runtime is `startos/` (SDK `@start9labs/start-sdk`).
-  Key files: `manifest/index.ts` (id/images/volumes), `main.ts` (postgres + web
-  + listener daemons), `interfaces.ts` (HTTP :2288),
-  `init/generateSecrets.ts` + `fileModels/store.json.ts` (persistent generated
-  database, JWT, user-key-vault, listener, and NWC-vault secrets).
-- The upstream app is <https://github.com/lawalletio/lawallet-nwc>; this repo
-  only packages the published image. Version/image bumps are automated — see
-  `UPDATING.md`.
-- Validate with `npm run check` (tsc) and `npm run build` (ncc). Build the
-  package with `make`. Full packaging guide: <https://docs.start9.com/packaging>.
-- Keep `README.md` (developer/architecture) and `instructions.md` (end-user) in
-  sync with any change.
+Develop it inside a StartOS packaging workspace created by `start-cli s9pk init-workspace`,
+which provides the packaging guide and agent context one level up. If you're reading this in a
+bare clone with no workspace, the full guide is at <https://docs.start9.com/packaging>.
+
+**Start every task at the recipe index** — `../start-technologies/projects/start-sdk/docs/src/recipes.md`
+(or <https://docs.start9.com/packaging/recipes.html>). It maps an intent ("prompt the user to create
+admin credentials", "expose a web UI") to the constructs, the reference pages, and a named production
+package to copy. Find the recipe before you read this package's neighbours: a package you reach by
+grepping may be non-conformant, and the recipe outranks it.
+
+Freshly scaffolded? Work the
+[New Package Checklist](../start-technologies/projects/start-sdk/docs/src/new-package-checklist.md)
+(or <https://docs.start9.com/packaging/new-package-checklist.html>) from top to bottom. It is a
+guide page, not a file in this repo — read it, don't copy it in.
+
+Keep `README.md` (technical reference for an AI support or administering agent) and
+`instructions.md` (end-user docs) in sync with your changes. This file restates neither:
+whoever changes the package has both, so it carries only what they don't — repo mechanics,
+a change that looks right and is not, where the next thing gets added, a naming trap, a
+build or test invocation particular to this repo.
+
+**Fix a defect you spot rather than reporting it** — you have the package open and the
+context to be sure. File **a GitHub issue on this repo** only when the call isn't yours to
+make: you can't pin the cause down, two defensible fixes exist, or it's too large to ride on
+the work in hand. An open issue is a report, not a queue — implement one when you're asked
+to or when it's labelled `Approved`, then close it with `Closes #<n>`.
+
+Don't record work in the repo instead: no `TODO.md`, no `NOTES.md`, no `PLAN.md`. What you
+verified, tried, and decided belongs in the commit message and the PR body.
+
+## This repo
+
+- **Write secret charsets as comma-separated ranges** (`'a-z,A-Z,0-9'`): `utils.getDefaultString({ charset: 'a-zA-Z0-9' })` type-checks and throws at runtime.
+- **Don't export the listener's port** — it would publish a second authenticated path into the wallet.

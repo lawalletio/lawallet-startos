@@ -16,7 +16,7 @@ export const pgPort = 5432
 
 /**
  * `charset` is a comma-separated list of ranges — `'a-zA-Z0-9'` is a parse
- * error on start-sdk 2.0, not a three-range set.
+ * error, not a three-range set.
  */
 export const generateSecret = (len: number): string =>
   utils.getDefaultString({ charset: 'a-z,A-Z,0-9', len })
