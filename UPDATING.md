@@ -11,8 +11,10 @@ and the same `main` + `db` layout.
 
 **Identical trees share a revision.** A review fix or Community-only change
 that is not on the sideload tag means the registry takes the next revision.
-This wrapper currently ships `2.7.1:1` on both channels after the Community
-review fixes.
+Both trees are on `@start9labs/start-sdk` 3.0.6. When Community moves the
+SDK (or anything else under `startos/`), port that change here before the
+next bump: the overlay copies this tree over theirs, and it refuses to run if
+Community's SDK is newer than this one.
 
 Older sideload installs kept Postgres on `main/postgresql/data`. Updating to
 this layout copies that cluster onto `db` once.
@@ -48,8 +50,11 @@ GitHub's 2 GiB release-asset limit, so it ships directly as a release download.
   workflow also copies it to `.startos/build.key.pem`). Used to sign the `.s9pk`.
 - **This repo:** `START9_COMMUNITY_PR_TOKEN` — a PAT that can push
   `community/nwc-*` branches here and open pull requests on
-  `Start9-Community/lawallet-startos` (classic `public_repo`, or fine-grained
-  contents-write on this repo plus PR creation on that public fork).
+  `Start9-Community/lawallet-startos` (classic `public_repo` + `workflow`, or
+  fine-grained Contents and **Workflows: Read and write** on this repo plus PR
+  creation on that public fork). The pushed branch carries Community's own
+  commits, so whenever they touch `.github/workflows/` GitHub rejects the push
+  from a token without the workflow scope.
   `GITHUB_TOKEN` cannot open PRs on another org.
 - **`lawallet-nwc`:** `START9_APP_STORE_DISPATCH_TOKEN` — a fine-grained PAT with
   **Contents: write** on this repo, so `docker-publish.yml`'s
