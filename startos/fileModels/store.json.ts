@@ -8,7 +8,7 @@ import { sdk } from '../sdk'
  */
 export const storeJson = FileHelper.json(
   { base: sdk.volumes.main, subpath: 'store.json' },
-  z.object({
+  z.looseObject({
     jwtSecret: z.string(),
     postgresPassword: z.string(),
     // Optional so backups created before the listener was bundled still load.

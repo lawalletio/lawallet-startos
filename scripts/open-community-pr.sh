@@ -87,9 +87,7 @@ url="$(
 
 - Overlay of [\`lawalletio/lawallet-startos\`](https://github.com/lawalletio/lawallet-startos) \`${version}\` onto this registry tree.
 - Keeps this repo's \`.github/workflows\` (Community build / S3 release / sync-next). Sideload publish stays on lawalletio.
-- Package layout is \`main\` + \`db\` with dump-based Postgres backups. Older sideload installs that kept the cluster on \`main\` are moved onto \`db\` once on update.
-
-This supersedes #3 (that branch ships \`refuseSideloadData\` instead of the migrate). Please close #3 after this lands.
+- \`packageRepo\` is rewritten to this repo; everything else matches the sideload tree.
 
 Future upstream bumps will open or update a PR like this from lawalletio's Release workflow. While a PR here has requested changes, the next bump is pushed to that branch instead of opening a sibling.
 EOF
