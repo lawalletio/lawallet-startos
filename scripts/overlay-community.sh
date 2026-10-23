@@ -30,6 +30,11 @@ grep -q "packageRepo: 'https://github.com/Start9-Community/lawallet-startos'" "$
   exit 1
 }
 rsync -a --delete "$src/assets/" "$dst/assets/"
+# Community's root Dockerfile layered ca-certificates over 2.8.0's images
+# (Node 24.21.0 still trusted the compromised emSign ECC Root CA - G3). This
+# manifest uses the published images directly, built on a Node that no longer
+# trusts it, so the layer would be dead code.
+rm -f "$dst/Dockerfile"
 
 cp "$src/instructions.md" "$dst/instructions.md"
 cp "$src/package.json" "$dst/package.json"

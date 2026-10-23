@@ -11,7 +11,7 @@ and the same `main` + `db` layout.
 
 **Identical trees share a revision.** A review fix or Community-only change
 that is not on the sideload tag means the registry takes the next revision.
-Both trees are on `@start9labs/start-sdk` 3.0.6. When Community moves the
+Both trees are on `@start9labs/start-sdk` 3.1.0. When Community moves the
 SDK (or anything else under `startos/`), port that change here before the
 next bump: the overlay copies this tree over theirs, and it refuses to run if
 Community's SDK is newer than this one.
