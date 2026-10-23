@@ -5,109 +5,114 @@ const CHANGELOG = 'https://github.com/lawalletio/lawallet-nwc/releases'
 export const current = VersionInfo.of({
   version: '2.8.0:0',
   releaseNotes: {
-    en_US: `Updates LaWallet NWC from 2.7.1 to 2.8.0.
+    en_US: `Updates LaWallet NWC from 2.8.0 to 2.9.0.
 
 Heads up:
-- Data retention is on: activity log entries, forwarding hops and finished notification deliveries older than 90 days are deleted.
-- Unpaid invoices more than an hour past their expiry are marked expired.
-- Browser page translation is disabled, because it crashed the app.
+- With an endpoint configured, Nostr (NIP-98) login only works from that exact address. Use your configured URL, not a LAN IP.
+- A wallet that does not answer now shows a balance of 0 instead of an error.
+- Runs on Node 24.22.1, which no longer trusts the compromised eMudhra emSign ECC Root CA - G3, so the temporary certificate layer from 2.8.0:1 is gone.
 
-**Features (2.7.2)**
+**New**
 
-- New cardholders can start with a passkey or a Nostr key, get their first Lightning Address free, and are led into the wallet
-- BoltCard top-up through a LUD-19 payLink, receive invoices charged by a card tap, payer notes on send, and no more 10,000 sat card ceiling
-- Simpler NWC wallet setup, receive from the home screen, a payment sound picker, and currency preferences saved to the account
-- Remote MCP server with OAuth 2.1 for AI agents
+- Recover a whole account with its NFC card at the point of sale
+- Make an account's first Lightning Address free, and delete an account from inside the app
+- Passkeys and links for the iOS and Android wallets, with single-prompt passkey setup on Android
+- Activity remembers who you paid, with their avatar and note, and pays them again in one tap
+- Wallet errors translated to Spanish
 
-**Speed and stability (2.8.0)**
+**Fixes**
 
-- Every wallet and admin screen has its own error boundary, so one failing screen no longer takes the app down
-- Faster wallet start with a 19% smaller bundle; profiles and NIP-05 no longer wait on relays
-- Fewer database queries, new indexes, a cheaper Lightning Address lookup, and a listener that idles when there is nothing to do
+- The admin dashboard no longer crashes on the What's New dialog
+- Wallet balances no longer wait up to 20 seconds on a silent wallet
+- Payment failures that were only logged now reach error reporting
 
 Full release notes: ${CHANGELOG}`,
-    es_ES: `Actualiza LaWallet NWC de 2.7.1 a 2.8.0.
+    es_ES: `Actualiza LaWallet NWC de 2.8.0 a 2.9.0.
 
 Atención:
-- La retención de datos está activada: se borran las entradas del registro de actividad, los tramos de reenvío y las notificaciones finalizadas con más de 90 días.
-- Las facturas impagas que llevan más de una hora vencidas se marcan como expiradas.
-- La traducción de páginas del navegador está desactivada, porque hacía fallar la aplicación.
+- Con un endpoint configurado, el inicio de sesión con Nostr (NIP-98) solo funciona desde esa dirección exacta. Usa la URL configurada, no una IP de la red local.
+- Un monedero que no responde ahora muestra saldo 0 en lugar de un error.
+- Funciona sobre Node 24.22.1, que ya no confía en la raíz comprometida eMudhra emSign ECC Root CA - G3, así que la capa temporal de certificados de 2.8.0:1 se elimina.
 
-**Novedades (2.7.2)**
+**Novedades**
 
-- Los nuevos titulares de tarjeta pueden empezar con una passkey o una clave Nostr, reciben su primera Lightning Address gratis y se les guía hasta el monedero
-- Recarga de BoltCard mediante payLink LUD-19, facturas de cobro pagadas acercando la tarjeta, notas del pagador al enviar y sin el límite de 10.000 sats por tarjeta
-- Alta de monederos NWC más sencilla, cobrar desde la pantalla de inicio, selector de sonido de pago y preferencias de moneda guardadas en la cuenta
-- Servidor MCP remoto con OAuth 2.1 para agentes de IA
+- Recupera una cuenta completa con su tarjeta NFC en el punto de venta
+- La primera Lightning Address de una cuenta puede ser gratis, y la cuenta se puede borrar desde la aplicación
+- Passkeys y enlaces para los monederos de iOS y Android, con alta de passkey en un solo paso en Android
+- La actividad recuerda a quién le pagaste, con su avatar y su nota, y vuelve a pagarle con un toque
+- Los errores del monedero, traducidos al español
 
-**Velocidad y estabilidad (2.8.0)**
+**Correcciones**
 
-- Cada pantalla del monedero y de administración tiene su propio límite de errores, así que una pantalla que falla ya no tumba la aplicación
-- Arranque del monedero más rápido con un paquete un 19% más pequeño; los perfiles y NIP-05 ya no esperan a los relés
-- Menos consultas a la base de datos, índices nuevos, una búsqueda de Lightning Address más barata y un listener que reposa cuando no hay nada que hacer
+- El panel de administración ya no falla al abrir el diálogo de novedades
+- Los saldos ya no esperan hasta 20 segundos a un monedero que no responde
+- Los fallos de pago que solo quedaban en el registro ahora llegan al reporte de errores
 
 Notas de la versión completas: ${CHANGELOG}`,
-    de_DE: `Aktualisiert LaWallet NWC von 2.7.1 auf 2.8.0.
+    de_DE: `Aktualisiert LaWallet NWC von 2.8.0 auf 2.9.0.
 
 Achtung:
-- Datenaufbewahrung ist aktiv: Aktivitätsprotokoll-Einträge, Weiterleitungs-Teilstrecken und abgeschlossene Benachrichtigungen, die älter als 90 Tage sind, werden gelöscht.
-- Unbezahlte Rechnungen, die seit mehr als einer Stunde abgelaufen sind, werden als abgelaufen markiert.
-- Die Seitenübersetzung des Browsers ist deaktiviert, weil sie die App abstürzen ließ.
+- Mit konfiguriertem Endpoint funktioniert die Nostr-Anmeldung (NIP-98) nur noch über genau diese Adresse. Verwende die konfigurierte URL, keine LAN-IP.
+- Eine Wallet, die nicht antwortet, zeigt jetzt einen Kontostand von 0 statt eines Fehlers.
+- Läuft auf Node 24.22.1, das der kompromittierten eMudhra emSign ECC Root CA - G3 nicht mehr vertraut; die vorübergehende Zertifikatsschicht aus 2.8.0:1 entfällt.
 
-**Funktionen (2.7.2)**
+**Neu**
 
-- Neue Karteninhaber können mit einem Passkey oder einem Nostr-Schlüssel starten, erhalten ihre erste Lightning-Adresse kostenlos und werden in die Wallet geführt
-- BoltCard-Aufladung per LUD-19-payLink, Empfangsrechnungen per Kartentipp bezahlt, Zahlernotizen beim Senden und keine 10.000-Sat-Obergrenze pro Karte mehr
-- Einfachere Einrichtung von NWC-Wallets, Empfangen vom Startbildschirm, Auswahl des Zahlungstons und Währungseinstellungen im Konto gespeichert
-- Remote-MCP-Server mit OAuth 2.1 für KI-Agenten
+- Ein ganzes Konto mit seiner NFC-Karte am Verkaufspunkt wiederherstellen
+- Die erste Lightning-Adresse eines Kontos kann kostenlos sein, und Konten lassen sich in der App löschen
+- Passkeys und Links für die iOS- und Android-Wallets, mit Passkey-Einrichtung in einem Schritt unter Android
+- Die Aktivität merkt sich, wen du bezahlt hast, mit Avatar und Notiz, und bezahlt mit einem Tipp erneut
+- Wallet-Fehlermeldungen auf Spanisch
 
-**Geschwindigkeit und Stabilität (2.8.0)**
+**Fehlerbehebungen**
 
-- Jeder Wallet- und Admin-Bildschirm hat eine eigene Fehlergrenze, ein fehlerhafter Bildschirm legt die App nicht mehr lahm
-- Schnellerer Wallet-Start mit 19% kleinerem Bundle; Profile und NIP-05 warten nicht mehr auf Relays
-- Weniger Datenbankabfragen, neue Indizes, eine günstigere Lightning-Adress-Abfrage und ein Listener, der ruht, wenn nichts zu tun ist
+- Das Admin-Dashboard stürzt beim Dialog „Neuigkeiten" nicht mehr ab
+- Kontostände warten nicht mehr bis zu 20 Sekunden auf eine stumme Wallet
+- Zahlungsfehler, die nur protokolliert wurden, landen jetzt in der Fehlerberichterstattung
 
 Vollständige Versionshinweise: ${CHANGELOG}`,
-    pl_PL: `Aktualizuje LaWallet NWC z 2.7.1 do 2.8.0.
+    pl_PL: `Aktualizuje LaWallet NWC z 2.8.0 do 2.9.0.
 
 Uwaga:
-- Retencja danych jest włączona: wpisy dziennika aktywności, odcinki przekazywania i zakończone powiadomienia starsze niż 90 dni są usuwane.
-- Nieopłacone faktury przeterminowane o ponad godzinę są oznaczane jako wygasłe.
-- Tłumaczenie stron w przeglądarce jest wyłączone, bo powodowało awarie aplikacji.
+- Przy skonfigurowanym endpoincie logowanie przez Nostr (NIP-98) działa tylko z tego dokładnego adresu. Używaj skonfigurowanego URL-a, a nie adresu IP w sieci lokalnej.
+- Portfel, który nie odpowiada, pokazuje teraz saldo 0 zamiast błędu.
+- Działa na Node 24.22.1, który nie ufa już skompromitowanemu certyfikatowi eMudhra emSign ECC Root CA - G3, więc tymczasowa warstwa certyfikatów z 2.8.0:1 zostaje usunięta.
 
-**Nowości (2.7.2)**
+**Nowości**
 
-- Nowi posiadacze kart mogą zacząć z kluczem dostępu (passkey) lub kluczem Nostr, dostają pierwszy adres Lightning za darmo i są prowadzeni do portfela
-- Doładowanie BoltCard przez payLink LUD-19, faktury odbioru opłacane zbliżeniem karty, notatki płatnika przy wysyłce i brak limitu 10 000 satów na kartę
-- Prostsze dodawanie portfela NWC, odbiór z ekranu głównego, wybór dźwięku płatności i preferencje waluty zapisane na koncie
-- Zdalny serwer MCP z OAuth 2.1 dla agentów AI
+- Odzyskanie całego konta za pomocą karty NFC w punkcie sprzedaży
+- Pierwszy adres Lightning konta może być darmowy, a konto można usunąć z poziomu aplikacji
+- Klucze dostępu (passkey) i linki dla portfeli iOS i Android, z konfiguracją passkey w jednym kroku na Androidzie
+- Aktywność pamięta, komu zapłaciłeś, z awatarem i notatką, i płaci ponownie jednym dotknięciem
+- Komunikaty błędów portfela przetłumaczone na hiszpański
 
-**Szybkość i stabilność (2.8.0)**
+**Poprawki**
 
-- Każdy ekran portfela i administracji ma własną granicę błędów, więc jeden wadliwy ekran nie wyłącza już całej aplikacji
-- Szybszy start portfela z pakietem mniejszym o 19%; profile i NIP-05 nie czekają już na przekaźniki
-- Mniej zapytań do bazy danych, nowe indeksy, tańsze wyszukiwanie adresu Lightning i listener, który odpoczywa, gdy nie ma nic do zrobienia
+- Panel administracyjny nie zawiesza się już przy oknie „Co nowego"
+- Salda nie czekają już do 20 sekund na milczący portfel
+- Błędy płatności, które trafiały tylko do logów, są teraz zgłaszane
 
 Pełne informacje o wydaniach: ${CHANGELOG}`,
-    fr_FR: `Met à jour LaWallet NWC de 2.7.1 vers 2.8.0.
+    fr_FR: `Met à jour LaWallet NWC de 2.8.0 vers 2.9.0.
 
 Attention :
-- La rétention des données est active : les entrées du journal d'activité, les tronçons de transfert et les notifications terminées de plus de 90 jours sont supprimés.
-- Les factures impayées expirées depuis plus d'une heure sont marquées comme expirées.
-- La traduction de pages du navigateur est désactivée, car elle faisait planter l'application.
+- Avec un endpoint configuré, la connexion Nostr (NIP-98) ne fonctionne plus que depuis cette adresse exacte. Utilisez l'URL configurée, pas une IP du réseau local.
+- Un portefeuille qui ne répond pas affiche désormais un solde de 0 au lieu d'une erreur.
+- Tourne sur Node 24.22.1, qui ne fait plus confiance à la racine compromise eMudhra emSign ECC Root CA - G3 ; la couche de certificats temporaire de 2.8.0:1 disparaît.
 
-**Fonctionnalités (2.7.2)**
+**Nouveautés**
 
-- Les nouveaux titulaires de carte peuvent démarrer avec une passkey ou une clé Nostr, reçoivent leur première adresse Lightning gratuitement et sont guidés jusqu'au portefeuille
-- Recharge BoltCard via un payLink LUD-19, factures de réception réglées d'un geste de la carte, notes du payeur à l'envoi, et plus de plafond de 10 000 sats par carte
-- Ajout d'un portefeuille NWC simplifié, réception depuis l'écran d'accueil, choix du son de paiement et préférences de devise enregistrées sur le compte
-- Serveur MCP distant avec OAuth 2.1 pour les agents IA
+- Récupérer un compte entier avec sa carte NFC au point de vente
+- La première adresse Lightning d'un compte peut être gratuite, et un compte se supprime depuis l'application
+- Passkeys et liens pour les portefeuilles iOS et Android, avec création de passkey en une seule étape sur Android
+- L'activité se souvient de qui vous avez payé, avec son avatar et sa note, et le repaie d'un geste
+- Erreurs du portefeuille traduites en espagnol
 
-**Vitesse et stabilité (2.8.0)**
+**Corrections**
 
-- Chaque écran du portefeuille et de l'administration a sa propre barrière d'erreur : un écran en échec ne fait plus tomber l'application
-- Démarrage du portefeuille plus rapide avec un bundle 19 % plus léger ; les profils et NIP-05 n'attendent plus les relais
-- Moins de requêtes en base, de nouveaux index, une recherche d'adresse Lightning moins coûteuse et un listener qui se met en veille quand il n'a rien à faire
+- Le tableau de bord d'administration ne plante plus sur la fenêtre « Nouveautés »
+- Les soldes n'attendent plus jusqu'à 20 secondes un portefeuille muet
+- Les échecs de paiement qui n'étaient que journalisés remontent maintenant au suivi des erreurs
 
 Notes de version complètes : ${CHANGELOG}`,
   },
