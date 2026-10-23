@@ -3,7 +3,7 @@ import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 const CHANGELOG = 'https://github.com/lawalletio/lawallet-nwc/releases'
 
 export const current = VersionInfo.of({
-  version: '2.8.0:0',
+  version: '2.9.0:0',
   releaseNotes: {
     en_US: `Updates LaWallet NWC from 2.8.0 to 2.9.0.
 
