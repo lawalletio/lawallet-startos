@@ -3,6 +3,8 @@ import { utils } from '@start9labs/start-sdk'
 
 /** Port the LaWallet NWC web server listens on (baked into the image). */
 export const uiPort = 2288
+/** Private NWC listener port inside the package network namespace. */
+export const listenerPort = 4100
 
 /**
  * Postgres runs as a localhost-only sidecar inside this package's isolated

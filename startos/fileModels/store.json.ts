@@ -11,5 +11,9 @@ export const storeJson = FileHelper.json(
   z.object({
     jwtSecret: z.string(),
     postgresPassword: z.string(),
+    // Optional for compatibility with backups created before the listener and
+    // deferred proxy were bundled. main.ts fills them once and persists them.
+    listenerAuthSecret: z.string().optional(),
+    nwcVaultSecret: z.string().optional(),
   }),
 )

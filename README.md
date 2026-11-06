@@ -9,7 +9,7 @@
 
 StartOS service package for [LaWallet NWC](https://github.com/lawalletio/lawallet-nwc)
 — an open-source Lightning Address platform with Nostr Wallet Connect (NIP-47).
-This package runs the web app together with its own PostgreSQL database in a
+This package runs the web app, NWC listener, and PostgreSQL database in a
 single service; no external services are required.
 
 ## Table of Contents
@@ -29,10 +29,11 @@ single service; no external services are required.
 
 ## Image and Container Runtime
 
-| Image ID   | Image                          | Command (mirrors the image)                     |
-| ---------- | ------------------------------ | ----------------------------------------------- |
-| `web`      | `masize/lawallet-nwc:<version>`| `sh -c "prisma migrate deploy && node server.js"` |
-| `postgres` | `postgres:15-alpine`           | `docker-entrypoint.sh postgres -c listen_addresses=127.0.0.1` |
+| Image ID   | Image                                    | Command (mirrors the image)                                   |
+| ---------- | ---------------------------------------- | ------------------------------------------------------------- |
+| `web`      | `masize/lawallet-nwc:<version>`          | `sh -c "prisma migrate deploy && node server.js"`             |
+| `listener` | `masize/lawallet-nwc-listener:<version>` | `node dist/index.js`                                          |
+| `postgres` | `postgres:15-alpine`                     | `docker-entrypoint.sh postgres -c listen_addresses=127.0.0.1` |
 
 Architectures: `x86_64`, `aarch64`. The `web` image is the multi-arch image
 built and published by lawallet-nwc CI. Postgres listens on `127.0.0.1` only and
@@ -44,18 +45,19 @@ is not exposed off-host.
 
 Single `main` volume, sub-pathed per concern:
 
-| Subpath        | Mount point              | Purpose                              |
-| -------------- | ------------------------ | ------------------------------------ |
-| `postgresql`   | `/var/lib/postgresql`    | PostgreSQL data directory            |
-| `data`         | `/app/data`              | Cached Nostr profiles (app data dir) |
-| `store.json`   | (package store)          | Generated `JWT_SECRET` + DB password |
+| Subpath      | Mount point           | Purpose                                            |
+| ------------ | --------------------- | -------------------------------------------------- |
+| `postgresql` | `/var/lib/postgresql` | PostgreSQL data directory                          |
+| `data`       | `/app/data`           | Cached Nostr profiles (app data dir)               |
+| `store.json` | (package store)       | Generated JWT, listener, NWC vault, and DB secrets |
 
 ---
 
 ## Installation and First-Run Flow
 
-1. On **install**, the package generates a random `JWT_SECRET` and PostgreSQL
-   password and persists them to the `main` volume (`startos/init/generateSecrets.ts`).
+1. On **install**, the package generates random JWT, listener authentication,
+   NWC vault, and PostgreSQL secrets and persists them to the `main` volume
+   (`startos/init/generateSecrets.ts`).
 2. On **start**, Postgres comes up first; once `pg_isready`, the web app runs
    `prisma migrate deploy` and starts.
 3. There is no admin password — the operator claims the **root admin** role by
@@ -68,23 +70,27 @@ Single `main` volume, sub-pathed per concern:
 
 No StartOS config form. All runtime environment is derived automatically:
 
-| Env var        | Value                                                        |
-| -------------- | ----------------------------------------------------------- |
-| `DATABASE_URL` | `postgresql://lawallet:<generated>@127.0.0.1:5432/lawallet` |
-| `JWT_SECRET`   | generated on install, stored on the `main` volume           |
-| `NODE_ENV`     | `production`                                                 |
-| `PORT`         | `2288`                                                       |
-| `HOSTNAME`     | `0.0.0.0`                                                    |
+| Env var                | Value                                                       |
+| ---------------------- | ----------------------------------------------------------- |
+| `DATABASE_URL`         | `postgresql://lawallet:<generated>@127.0.0.1:5432/lawallet` |
+| `JWT_SECRET`           | generated on install, stored on the `main` volume           |
+| `LISTENER_AUTH_SECRET` | generated once and shared by web and listener               |
+| `NWC_VAULT_SECRET`     | generated once and shared by web and listener               |
+| `LISTENER_URL`         | private listener at `http://127.0.0.1:4100`                 |
+| `NODE_ENV`             | `production`                                                |
+| `PORT` / `HOSTNAME`    | `2288` / `0.0.0.0`                                          |
 
 Further configuration (domain, lightning addresses, remote wallets, cards,
-branding) happens inside the app after signing in.
+branding) happens inside the app after signing in. The NIP-57 receipt signer is
+an `nsec` entered in Admin Settings and encrypted with the NWC vault key; it is
+not a package environment variable.
 
 ---
 
 ## Network Access and Interfaces
 
-| Interface | Port | Protocol | Purpose                                |
-| --------- | ---- | -------- | -------------------------------------- |
+| Interface | Port | Protocol | Purpose                                    |
+| --------- | ---- | -------- | ------------------------------------------ |
 | Web UI    | 2288 | HTTP     | Admin dashboard + wallet + LUD-16 / NIP-05 |
 
 Access via LAN IP, `<hostname>.local`, Tor `.onion`, or a custom domain. For
@@ -96,10 +102,10 @@ interface — see [instructions.md](instructions.md).
 
 ## Health Checks
 
-| Check         | Method                                        |
-| ------------- | --------------------------------------------- |
-| Web Interface | HTTP GET `http://127.0.0.1:2288/api/health`   |
-| PostgreSQL    | `pg_isready` (internal, hidden from UI)       |
+| Check         | Method                                      |
+| ------------- | ------------------------------------------- |
+| Web Interface | HTTP GET `http://127.0.0.1:2288/api/health` |
+| PostgreSQL    | `pg_isready` (internal, hidden from UI)     |
 
 ---
 
@@ -138,6 +144,7 @@ lawallet-nwc publishes a new release (see [UPDATING.md](UPDATING.md) and
 package_id: lawallet-nwc
 images:
   web: masize/lawallet-nwc:1.0.10
+  listener: masize/lawallet-nwc-listener:1.0.10
   postgres: postgres:15-alpine
 architectures: [x86_64, aarch64]
 volumes:
@@ -147,8 +154,19 @@ volumes:
 ports:
   ui: 2288
 health: GET http://127.0.0.1:2288/api/health
-startos_managed_env_vars: [DATABASE_URL, JWT_SECRET, NODE_ENV, PORT, HOSTNAME]
-generated_secrets: [JWT_SECRET, postgresPassword]   # store.json on main volume
+startos_managed_env_vars:
+  [
+    DATABASE_URL,
+    JWT_SECRET,
+    LISTENER_URL,
+    LISTENER_AUTH_SECRET,
+    NWC_VAULT_SECRET,
+    NODE_ENV,
+    PORT,
+    HOSTNAME,
+  ]
+generated_secrets:
+  [JWT_SECRET, LISTENER_AUTH_SECRET, NWC_VAULT_SECRET, postgresPassword]
 first_run: claim root admin by signing in with a Nostr key (NIP-07 / nsec)
 dependencies: none
 ```
