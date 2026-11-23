@@ -5,114 +5,114 @@ const CHANGELOG = 'https://github.com/lawalletio/lawallet-nwc/releases'
 export const current = VersionInfo.of({
   version: '2.9.0:0',
   releaseNotes: {
-    en_US: `Updates LaWallet NWC from 2.8.0 to 2.9.0.
+    en_US: `Updates LaWallet NWC from 2.9.0 to 2.10.0.
 
 Heads up:
-- With an endpoint configured, Nostr (NIP-98) login only works from that exact address. Use your configured URL, not a LAN IP.
-- A wallet that does not answer now shows a balance of 0 instead of an error.
-- Runs on Node 24.22.1, which no longer trusts the compromised eMudhra emSign ECC Root CA - G3, so the temporary certificate layer from 2.8.0:1 is gone.
+- Card scans now always advertise up to 10,000,000 sats; an empty wallet refuses the payment at checkout instead.
+- A card tap can answer OK before the payment settles when the balance clearly covers it. Owners can hide their balance from the terminal in card settings.
+- Connected MCP apps now keep their sign-in for 24 hours between refreshes.
 
 **New**
 
-- Recover a whole account with its NFC card at the point of sale
-- Make an account's first Lightning Address free, and delete an account from inside the app
-- Passkeys and links for the iOS and Android wallets, with single-prompt passkey setup on Android
-- Activity remembers who you paid, with their avatar and note, and pays them again in one tap
-- Wallet errors translated to Spanish
+- Sign in with just an email address, with SMTP, AWS SES or Resend configured in Settings
+- Sell sats for Argentine pesos to a CBU, CVU or alias through Bull Bitcoin or Wapu, with PDF receipts
+- Limit each connected MCP app to chosen wallets
+- The wallet opens instantly from its last session and shows an "Offline mode" badge without a connection
+- Admin Tools page with a Lightning invoice lookup, and preference polls for users
 
 **Fixes**
 
-- The admin dashboard no longer crashes on the What's New dialog
-- Wallet balances no longer wait up to 20 seconds on a silent wallet
-- Payment failures that were only logged now reach error reporting
+- A wallet that may hold funds is never archived automatically
+- MCP clients such as Claude Code no longer lose their session on token refresh
+- Fewer database round-trips on payments and balances, and lighter page loads
 
 Full release notes: ${CHANGELOG}`,
-    es_ES: `Actualiza LaWallet NWC de 2.8.0 a 2.9.0.
+    es_ES: `Actualiza LaWallet NWC de 2.9.0 a 2.10.0.
 
 Atención:
-- Con un endpoint configurado, el inicio de sesión con Nostr (NIP-98) solo funciona desde esa dirección exacta. Usa la URL configurada, no una IP de la red local.
-- Un monedero que no responde ahora muestra saldo 0 en lugar de un error.
-- Funciona sobre Node 24.22.1, que ya no confía en la raíz comprometida eMudhra emSign ECC Root CA - G3, así que la capa temporal de certificados de 2.8.0:1 se elimina.
+- El escaneo de tarjetas ahora siempre anuncia hasta 10.000.000 sats; un monedero vacío rechaza el pago al cobrar.
+- Un toque de tarjeta puede responder OK antes de que se liquide el pago cuando el saldo lo cubre de sobra. Los dueños pueden ocultar su saldo a la terminal en la configuración de tarjetas.
+- Las aplicaciones MCP conectadas ahora mantienen la sesión 24 horas entre renovaciones.
 
 **Novedades**
 
-- Recupera una cuenta completa con su tarjeta NFC en el punto de venta
-- La primera Lightning Address de una cuenta puede ser gratis, y la cuenta se puede borrar desde la aplicación
-- Passkeys y enlaces para los monederos de iOS y Android, con alta de passkey en un solo paso en Android
-- La actividad recuerda a quién le pagaste, con su avatar y su nota, y vuelve a pagarle con un toque
-- Los errores del monedero, traducidos al español
+- Inicio de sesión con solo una dirección de email, con SMTP, AWS SES o Resend configurados en Ajustes
+- Vende sats por pesos argentinos a un CBU, CVU o alias con Bull Bitcoin o Wapu, con comprobantes en PDF
+- Limita cada aplicación MCP conectada a los monederos que elijas
+- El monedero abre al instante con los datos de la última sesión y muestra "Modo sin conexión" cuando no hay red
+- Página de Herramientas con búsqueda de facturas Lightning, y encuestas de preferencias para los usuarios
 
 **Correcciones**
 
-- El panel de administración ya no falla al abrir el diálogo de novedades
-- Los saldos ya no esperan hasta 20 segundos a un monedero que no responde
-- Los fallos de pago que solo quedaban en el registro ahora llegan al reporte de errores
+- Un monedero que puede tener fondos nunca se archiva automáticamente
+- Clientes MCP como Claude Code ya no pierden la sesión al renovar el token
+- Menos consultas a la base de datos en pagos y saldos, y páginas más livianas
 
 Notas de la versión completas: ${CHANGELOG}`,
-    de_DE: `Aktualisiert LaWallet NWC von 2.8.0 auf 2.9.0.
+    de_DE: `Aktualisiert LaWallet NWC von 2.9.0 auf 2.10.0.
 
 Achtung:
-- Mit konfiguriertem Endpoint funktioniert die Nostr-Anmeldung (NIP-98) nur noch über genau diese Adresse. Verwende die konfigurierte URL, keine LAN-IP.
-- Eine Wallet, die nicht antwortet, zeigt jetzt einen Kontostand von 0 statt eines Fehlers.
-- Läuft auf Node 24.22.1, das der kompromittierten eMudhra emSign ECC Root CA - G3 nicht mehr vertraut; die vorübergehende Zertifikatsschicht aus 2.8.0:1 entfällt.
+- Karten-Scans bieten jetzt immer bis zu 10.000.000 Sats an; eine leere Wallet lehnt die Zahlung erst an der Kasse ab.
+- Ein Karten-Tap kann OK melden, bevor die Zahlung abgeschlossen ist, wenn das Guthaben sie klar deckt. Besitzer können ihr Guthaben in den Karteneinstellungen vor dem Terminal verbergen.
+- Verbundene MCP-Apps bleiben jetzt 24 Stunden zwischen Erneuerungen angemeldet.
 
 **Neu**
 
-- Ein ganzes Konto mit seiner NFC-Karte am Verkaufspunkt wiederherstellen
-- Die erste Lightning-Adresse eines Kontos kann kostenlos sein, und Konten lassen sich in der App löschen
-- Passkeys und Links für die iOS- und Android-Wallets, mit Passkey-Einrichtung in einem Schritt unter Android
-- Die Aktivität merkt sich, wen du bezahlt hast, mit Avatar und Notiz, und bezahlt mit einem Tipp erneut
-- Wallet-Fehlermeldungen auf Spanisch
+- Anmeldung nur mit einer E-Mail-Adresse, mit SMTP, AWS SES oder Resend in den Einstellungen
+- Sats gegen argentinische Pesos an ein CBU, CVU oder Alias verkaufen, über Bull Bitcoin oder Wapu, mit PDF-Belegen
+- Jede verbundene MCP-App auf ausgewählte Wallets beschränken
+- Die Wallet öffnet sofort mit den Daten der letzten Sitzung und zeigt ohne Verbindung „Offline-Modus"
+- Admin-Seite „Tools" mit Lightning-Rechnungssuche und Umfragen für Nutzer
 
 **Fehlerbehebungen**
 
-- Das Admin-Dashboard stürzt beim Dialog „Neuigkeiten" nicht mehr ab
-- Kontostände warten nicht mehr bis zu 20 Sekunden auf eine stumme Wallet
-- Zahlungsfehler, die nur protokolliert wurden, landen jetzt in der Fehlerberichterstattung
+- Eine Wallet, die Guthaben haben könnte, wird nie automatisch archiviert
+- MCP-Clients wie Claude Code verlieren beim Token-Refresh nicht mehr ihre Sitzung
+- Weniger Datenbankabfragen bei Zahlungen und Kontoständen, leichtere Seiten
 
 Vollständige Versionshinweise: ${CHANGELOG}`,
-    pl_PL: `Aktualizuje LaWallet NWC z 2.8.0 do 2.9.0.
+    pl_PL: `Aktualizuje LaWallet NWC z 2.9.0 do 2.10.0.
 
 Uwaga:
-- Przy skonfigurowanym endpoincie logowanie przez Nostr (NIP-98) działa tylko z tego dokładnego adresu. Używaj skonfigurowanego URL-a, a nie adresu IP w sieci lokalnej.
-- Portfel, który nie odpowiada, pokazuje teraz saldo 0 zamiast błędu.
-- Działa na Node 24.22.1, który nie ufa już skompromitowanemu certyfikatowi eMudhra emSign ECC Root CA - G3, więc tymczasowa warstwa certyfikatów z 2.8.0:1 zostaje usunięta.
+- Skanowanie karty zawsze oferuje teraz do 10 000 000 satów; pusty portfel odrzuca płatność dopiero przy kasie.
+- Dotknięcie karty może zwrócić OK przed rozliczeniem płatności, gdy saldo wyraźnie ją pokrywa. Właściciele mogą ukryć saldo przed terminalem w ustawieniach karty.
+- Połączone aplikacje MCP pozostają teraz zalogowane 24 godziny między odświeżeniami.
 
 **Nowości**
 
-- Odzyskanie całego konta za pomocą karty NFC w punkcie sprzedaży
-- Pierwszy adres Lightning konta może być darmowy, a konto można usunąć z poziomu aplikacji
-- Klucze dostępu (passkey) i linki dla portfeli iOS i Android, z konfiguracją passkey w jednym kroku na Androidzie
-- Aktywność pamięta, komu zapłaciłeś, z awatarem i notatką, i płaci ponownie jednym dotknięciem
-- Komunikaty błędów portfela przetłumaczone na hiszpański
+- Logowanie samym adresem e-mail, z SMTP, AWS SES lub Resend skonfigurowanym w Ustawieniach
+- Sprzedaż satów za argentyńskie pesos na CBU, CVU lub alias przez Bull Bitcoin lub Wapu, z potwierdzeniami PDF
+- Ograniczenie każdej połączonej aplikacji MCP do wybranych portfeli
+- Portfel otwiera się od razu z danymi z ostatniej sesji i pokazuje „Tryb offline" bez połączenia
+- Strona Narzędzia z wyszukiwaniem faktur Lightning oraz ankiety dla użytkowników
 
 **Poprawki**
 
-- Panel administracyjny nie zawiesza się już przy oknie „Co nowego"
-- Salda nie czekają już do 20 sekund na milczący portfel
-- Błędy płatności, które trafiały tylko do logów, są teraz zgłaszane
+- Portfel, który może zawierać środki, nigdy nie jest archiwizowany automatycznie
+- Klienci MCP, tacy jak Claude Code, nie tracą już sesji przy odświeżaniu tokenu
+- Mniej zapytań do bazy danych przy płatnościach i saldach, lżejsze strony
 
 Pełne informacje o wydaniach: ${CHANGELOG}`,
-    fr_FR: `Met à jour LaWallet NWC de 2.8.0 vers 2.9.0.
+    fr_FR: `Met à jour LaWallet NWC de 2.9.0 vers 2.10.0.
 
 Attention :
-- Avec un endpoint configuré, la connexion Nostr (NIP-98) ne fonctionne plus que depuis cette adresse exacte. Utilisez l'URL configurée, pas une IP du réseau local.
-- Un portefeuille qui ne répond pas affiche désormais un solde de 0 au lieu d'une erreur.
-- Tourne sur Node 24.22.1, qui ne fait plus confiance à la racine compromise eMudhra emSign ECC Root CA - G3 ; la couche de certificats temporaire de 2.8.0:1 disparaît.
+- Le scan d'une carte annonce désormais toujours jusqu'à 10 000 000 sats ; un portefeuille vide refuse le paiement à l'encaissement.
+- Un passage de carte peut répondre OK avant le règlement du paiement quand le solde le couvre largement. Les propriétaires peuvent masquer leur solde au terminal dans les réglages des cartes.
+- Les applications MCP connectées restent désormais connectées 24 heures entre deux renouvellements.
 
 **Nouveautés**
 
-- Récupérer un compte entier avec sa carte NFC au point de vente
-- La première adresse Lightning d'un compte peut être gratuite, et un compte se supprime depuis l'application
-- Passkeys et liens pour les portefeuilles iOS et Android, avec création de passkey en une seule étape sur Android
-- L'activité se souvient de qui vous avez payé, avec son avatar et sa note, et le repaie d'un geste
-- Erreurs du portefeuille traduites en espagnol
+- Connexion avec une simple adresse e-mail, via SMTP, AWS SES ou Resend configurés dans les Réglages
+- Vendre des sats contre des pesos argentins vers un CBU, CVU ou alias via Bull Bitcoin ou Wapu, avec reçus PDF
+- Limiter chaque application MCP connectée aux portefeuilles choisis
+- Le portefeuille s'ouvre instantanément avec la dernière session et affiche « Mode hors ligne » sans connexion
+- Page Outils avec recherche de factures Lightning, et sondages pour les utilisateurs
 
 **Corrections**
 
-- Le tableau de bord d'administration ne plante plus sur la fenêtre « Nouveautés »
-- Les soldes n'attendent plus jusqu'à 20 secondes un portefeuille muet
-- Les échecs de paiement qui n'étaient que journalisés remontent maintenant au suivi des erreurs
+- Un portefeuille susceptible de contenir des fonds n'est jamais archivé automatiquement
+- Les clients MCP comme Claude Code ne perdent plus leur session au renouvellement du jeton
+- Moins d'allers-retours avec la base de données pour les paiements et les soldes, pages plus légères
 
 Notes de version complètes : ${CHANGELOG}`,
   },
