@@ -5,7 +5,7 @@ const CHANGELOG = 'https://github.com/lawalletio/lawallet-nwc/releases'
 export const current = VersionInfo.of({
   version: '2.10.0:0',
   releaseNotes: {
-    en_US: `Updates LaWallet NWC from 2.9.0 to 2.10.0.
+    en_US: `Updates LaWallet NWC from 2.9.0 to 2.10.1. (2.10.1 only fixes the Umbrel package; on StartOS it is the same as 2.10.0.)
 
 Heads up:
 - Card scans now always advertise up to 10,000,000 sats; an empty wallet refuses the payment at checkout instead.
@@ -27,7 +27,7 @@ Heads up:
 - Fewer database round-trips on payments and balances, and lighter page loads
 
 Full release notes: ${CHANGELOG}`,
-    es_ES: `Actualiza LaWallet NWC de 2.9.0 a 2.10.0.
+    es_ES: `Actualiza LaWallet NWC de 2.9.0 a 2.10.1. (2.10.1 solo corrige el paquete de Umbrel; en StartOS es igual a 2.10.0.)
 
 Atención:
 - El escaneo de tarjetas ahora siempre anuncia hasta 10.000.000 sats; un monedero vacío rechaza el pago al cobrar.
@@ -49,7 +49,7 @@ Atención:
 - Menos consultas a la base de datos en pagos y saldos, y páginas más livianas
 
 Notas de la versión completas: ${CHANGELOG}`,
-    de_DE: `Aktualisiert LaWallet NWC von 2.9.0 auf 2.10.0.
+    de_DE: `Aktualisiert LaWallet NWC von 2.9.0 auf 2.10.1. (2.10.1 behebt nur das Umbrel-Paket; unter StartOS ist es identisch mit 2.10.0.)
 
 Achtung:
 - Karten-Scans bieten jetzt immer bis zu 10.000.000 Sats an; eine leere Wallet lehnt die Zahlung erst an der Kasse ab.
@@ -71,7 +71,7 @@ Achtung:
 - Weniger Datenbankabfragen bei Zahlungen und Kontoständen, leichtere Seiten
 
 Vollständige Versionshinweise: ${CHANGELOG}`,
-    pl_PL: `Aktualizuje LaWallet NWC z 2.9.0 do 2.10.0.
+    pl_PL: `Aktualizuje LaWallet NWC z 2.9.0 do 2.10.1. (2.10.1 naprawia tylko pakiet Umbrel; na StartOS jest taka sama jak 2.10.0.)
 
 Uwaga:
 - Skanowanie karty zawsze oferuje teraz do 10 000 000 satów; pusty portfel odrzuca płatność dopiero przy kasie.
@@ -93,7 +93,7 @@ Uwaga:
 - Mniej zapytań do bazy danych przy płatnościach i saldach, lżejsze strony
 
 Pełne informacje o wydaniach: ${CHANGELOG}`,
-    fr_FR: `Met à jour LaWallet NWC de 2.9.0 vers 2.10.0.
+    fr_FR: `Met à jour LaWallet NWC de 2.9.0 vers 2.10.1. (2.10.1 corrige uniquement le paquet Umbrel ; sur StartOS, elle est identique à 2.10.0.)
 
 Attention :
 - Le scan d'une carte annonce désormais toujours jusqu'à 10 000 000 sats ; un portefeuille vide refuse le paiement à l'encaissement.
