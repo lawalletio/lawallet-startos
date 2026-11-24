@@ -3,7 +3,7 @@ import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 const CHANGELOG = 'https://github.com/lawalletio/lawallet-nwc/releases'
 
 export const current = VersionInfo.of({
-  version: '2.10.0:0',
+  version: '2.10.1:0',
   releaseNotes: {
     en_US: `Updates LaWallet NWC from 2.9.0 to 2.10.1. (2.10.1 only fixes the Umbrel package; on StartOS it is the same as 2.10.0.)
 
